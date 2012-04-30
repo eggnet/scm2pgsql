@@ -20,10 +20,10 @@ public class Main {
 			{
 				if (args[0].equals("--convert"))
 				{
-					if(args[2].equals("SVN") || args[2].equals("svn"))
+					if(args[1].equals("SVN") || args[1].equals("svn"))
 					{
 						SVNConverter converter = SVNConverter.getInstance();
-						if(converter.Convert(args[3]))
+						if(converter.Convert(args[2]))
 							System.out.println("Conversion from SVN to Git was successfull");
 						else
 						{
@@ -31,7 +31,7 @@ public class Main {
 							throw new IOException();
 						}
 					}
-					else if(args[2].equals("CVS") || args[2].equals("cvs"))
+					else if(args[1].equals("CVS") || args[1].equals("cvs"))
 					{
 						// TODO @triet add the CVS converter stuff here.
 					}

@@ -7,6 +7,7 @@ package converters;
 
 import java.io.InputStream;
 import java.io.*;
+import java.io.File;
 
 public class SVNConverter {
 	
@@ -26,12 +27,20 @@ public class SVNConverter {
 	
 	public boolean Convert(String URL)
 	{
-		ProcessBuilder pb = new ProcessBuilder("svntogit.sh", URL);
+		// Get current working directory
+		File directory = new File ("");
+		ProcessBuilder pb;
+		if(!IsWindows())
+			pb = new ProcessBuilder(directory.getAbsolutePath() + "\\utils\\svntogit.sh", URL);
+		else
+			pb = new ProcessBuilder(directory.getAbsolutePath() + "\\utils\\svntogit.sh", URL);
 		try
 		{
 			// Capture the stderr
 			pb.redirectErrorStream(true);
+			
 			Process shell = pb.start();
+			
 			// Capture the output
 			InputStream shellIn = shell.getInputStream();
 			// Capture the exit code
@@ -48,7 +57,15 @@ public class SVNConverter {
 		}
 		catch (Exception e)
 		{
+			System.out.println(e.getLocalizedMessage());
 			return false;
 		}
+	}
+	
+	private boolean IsWindows()
+	{
+		String os = System.getProperty("os.name").toLowerCase();
+		// windows
+		return (os.indexOf("win") >= 0);
 	}
 }
