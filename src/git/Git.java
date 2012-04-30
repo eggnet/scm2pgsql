@@ -17,17 +17,18 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 
+import scm2pgsql.Resources;
+
 public class Git {
 	public File repoDir;
 	public Repository repoFile;
+	DbConnection db = DbConnection.getInstance();
 	public void parseRepo(String inDir) throws MissingObjectException, IOException
 	{
-		
-		DbConnection db = DbConnection.getInstance();
-		db.connect("jdbc:postgresql://142.104.21.212:5432/test");
-		db.createDB("testing123");
-		db.close();
 		repoDir = new File(inDir);
+		db.connect(Resources.dbUrl);
+		db.createDB("TEST1234");
+		
 		repoFile = new RepositoryBuilder() //
 	        .setGitDir(repoDir) // --git-dir if supplied, no-op if null
 	        .findGitDir() // scan up the file system tree
