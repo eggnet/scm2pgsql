@@ -12,4 +12,6 @@ exit 1
 fi
 
 # Make the conversion here
-git svn clone -s $0 ../temp/svnConverted
+echo "Converting the SVN repository at:" + $1
+echo "NOTE: only include the URL up to the /svn, do NOT include the /trunk at the end."
+git svn clone -s $1 ../temp/svnConverted
