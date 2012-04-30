@@ -25,14 +25,17 @@ public class Git {
 	DbConnection db = DbConnection.getInstance();
 	public void parseRepo(String inDir) throws MissingObjectException, IOException
 	{
-		repoDir = new File(inDir);
 		db.connect(Resources.dbUrl);
-		db.createDB("TEST1234");
-		
+
+		repoDir = new File(inDir);
 		repoFile = new RepositoryBuilder() //
 	        .setGitDir(repoDir) // --git-dir if supplied, no-op if null
 	        .findGitDir() // scan up the file system tree
 	        .build();
+		
+		// First create the new databse for the project
+		db.createDB(dbName);
+		
 		// find the HEAD
 		ObjectId lastCommitId = repoFile.resolve(Constants.HEAD);
 		// now we have to get the commit
