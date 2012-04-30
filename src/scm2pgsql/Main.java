@@ -29,10 +29,8 @@ public class Main {
 					try {
 						gitParser.parseRepo(".git");
 					} catch (MissingObjectException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}

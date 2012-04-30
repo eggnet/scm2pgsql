@@ -1,3 +1,4 @@
 build
 *.class
 bin
+src/scm2pgsql/Resources.java
