@@ -57,7 +57,7 @@ public class DbConnection {
 	public boolean connect(String connectionString)
 	{
 		try {
-			conn = DriverManager.getConnection(connectionString, Resources.dbUsername, Resources.dbPassword);
+			conn = DriverManager.getConnection(connectionString, Resources.dbUser, Resources.dbPassword);
 		} 
 		catch (SQLException e) 
 		{
