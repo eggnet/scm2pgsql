@@ -3,6 +3,7 @@ package git;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import db.DbConnection;
 
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Constants;
@@ -18,13 +19,19 @@ import org.eclipse.jgit.treewalk.filter.PathFilter;
 
 public class Git {
 	public File repoDir;
-	public RepositoryBuilder repoBuilder;
 	public Repository repoFile;
 	public void parseRepo(String inDir) throws MissingObjectException, IOException
 	{
+		
+		DbConnection db = DbConnection.getInstance();
+		db.connect("jdbc:postgresql://142.104.21.212:5432/test");
+		db.createDB("testing123");
+		db.close();
 		repoDir = new File(inDir);
-		repoBuilder.findGitDir(repoDir);
-		repoFile = this.repoBuilder.build();
+		repoFile = new RepositoryBuilder() //
+	        .setGitDir(repoDir) // --git-dir if supplied, no-op if null
+	        .findGitDir() // scan up the file system tree
+	        .build();
 		// find the HEAD
 		ObjectId lastCommitId = repoFile.resolve(Constants.HEAD);
 		// now we have to get the commit
@@ -34,7 +41,7 @@ public class Git {
 		RevTree tree = commit.getTree();
 		TreeWalk treeWalk = new TreeWalk(repoFile);
 		treeWalk.addTree(tree);
-		treeWalk.setFilter(PathFilter.create(""));
+		treeWalk.setFilter(PathFilter.create("README"));
 		if (!treeWalk.next()) {
 		  return;
 		}
