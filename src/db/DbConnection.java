@@ -1,16 +1,18 @@
 package db;
 
+import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import db.ScriptRunner;
 
 import scm2pgsql.Resources;
 
 public class DbConnection {
 	public static Connection conn = null;
 	public static DbConnection ref = null;
-	public static String DriverString = "org.postgresql.jdbc4";
+	public static ScriptRunner sr;
 	private DbConnection() 
 	{
 		try 
@@ -58,6 +60,7 @@ public class DbConnection {
 	{
 		try {
 			conn = DriverManager.getConnection(connectionString, Resources.dbUser, Resources.dbPassword);
+			sr = new ScriptRunner(conn, true, true);
 		} 
 		catch (SQLException e) 
 		{
@@ -75,10 +78,19 @@ public class DbConnection {
 	{
 		PreparedStatement s;
 		try {
+			// First create the DB.
 			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";"); // TODO SQL escaping?
 			s.execute();
+			
+			// Reconnect to our new database.
+			connect(Resources.dbUrl + dbName.toLowerCase());
+			
+			System.out.println(this.getClass().getResource("scripts/createdb.sql").getPath());
+			// Now load our default schema in.
+			sr.runScript(new FileReader(this.getClass().getResource("scripts/createdb.sql").getPath()));
+			
 			return true;
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
 		}

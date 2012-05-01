@@ -25,26 +25,25 @@ public class GitParser {
 	public Repository repoFile;
 	public DbConnection db = DbConnection.getInstance();
 	public Git git;
-	private void initDb(String dbName)
+	
+	private void initialize(String gitDir) throws IOException
 	{
+		repoDir = new File(gitDir);
+		repoFile = new RepositoryBuilder()
+			.setGitDir(repoDir)
+			.findGitDir()
+			.build();
+		git = new Git(repoFile);
+		String[] chunks = repoFile.getDirectory().getCanonicalPath().split(File.separator);
+		String repoName = chunks[chunks.length-2];
 		db.connect(Resources.dbUrl);
-		db.createDB(dbName);
+		db.createDB(repoName);
 	}
 	
 	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{	
 		// Initialize the repo directory
-		repoDir = new File(gitDir);
-		repoFile = new RepositoryBuilder() //
-	        .setGitDir(repoDir) // --git-dir if supplied, no-op if null
-	        .findGitDir() // scan up the file system tree
-	        .build();
-		git = new Git(repoFile);
-		String[] chunks = repoFile.getDirectory().getCanonicalPath().split(File.separator);
-		String repoName = chunks[chunks.length-2];
-		initDb(repoName);
-		
-		
+		initialize(gitDir);
 		
 		// find the HEAD
 		ObjectId lastCommitId = repoFile.resolve(Constants.HEAD);
