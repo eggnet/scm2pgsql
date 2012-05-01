@@ -42,19 +42,40 @@ public class DbConnection {
 	}
 	
 	/**
-	 * Executes a string of SQL on the current databse
+	 * Executes a string of SQL on the current database
+	 * NOTE: this assumes your sql is valid.
 	 * @param sql
 	 * @return true if successful
 	 */
 	public boolean exec(String sql)
 	{
-		//TODO @braden
+		try {
+			PreparedStatement s = conn.prepareStatement(sql);
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+			return false;
+		}
 		return true;
 	}
 	
+	/**
+	 * Executes a sql script at the given path.
+	 * @param absPath
+	 * @return true if succcessful
+	 */
 	public boolean execScript(String absPath)
 	{
-		//TODO @braden
+		try {
+			sr.runScript(new FileReader(absPath));
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			return false;
+		}
 		return true;
 	}
 	
@@ -72,6 +93,7 @@ public class DbConnection {
 		catch (SQLException e) 
 		{
 			e.printStackTrace();
+			return false;
 		}
 		return true;
 	}
@@ -98,7 +120,6 @@ public class DbConnection {
 			
 			// Now load our default schema in.
 			sr.runScript(new FileReader(this.getClass().getResource("scripts/createdb.sql").getPath()));
-			
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
