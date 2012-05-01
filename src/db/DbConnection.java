@@ -78,8 +78,12 @@ public class DbConnection {
 	{
 		PreparedStatement s;
 		try {
+			// Drop the DB if it already exists
+			s = conn.prepareStatement("DROP DATABASE IF EXISTS " + dbName + ";");
+			s.execute();
+			
 			// First create the DB.
-			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";"); // TODO SQL escaping?
+			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";");
 			s.execute();
 			
 			// Reconnect to our new database.
