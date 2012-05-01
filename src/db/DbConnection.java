@@ -94,7 +94,6 @@ public class DbConnection {
 			
 			// Now load our default schema in.
 			sr.runScript(new FileReader(this.getClass().getResource("scripts/createdb.sql").getPath()));
-			
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();

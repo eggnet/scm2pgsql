@@ -28,15 +28,13 @@ public class GitParser {
 	
 	private void initialize(String gitDir) throws IOException
 	{
-		repoDir = new File(gitDir);
+		repoDir = new File(gitDir + "/.git");
 		repoFile = new RepositoryBuilder() //
 			.setGitDir(repoDir)
 			.findGitDir()
 			.build();
 		git = new Git(repoFile);
-		System.out.println(repoFile.getDirectory().getCanonicalPath());
-		String repoName = repoFile.getDirectory().getAbsolutePath().substring(
-				repoFile.getDirectory().getAbsolutePath().lastIndexOf(File.separator)+1);
+		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
 		db.connect(Resources.dbUrl);
 		db.createDB(repoName);
 	}
@@ -44,6 +42,14 @@ public class GitParser {
 	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{	
 		initialize(gitDir);
+		
+		// Go Through each revision
+		// for each revision
+		// 		for each commit
+		//			generate commit record
+		//					
+		
+		
 		
 		// find the HEAD
 		ObjectId lastCommitId = repoFile.resolve(Constants.HEAD);
@@ -63,7 +69,6 @@ public class GitParser {
 
 		// and then one can use either
 		InputStream in = loader.openStream();
-		
 		// or
 		loader.copyTo(System.out);
 		

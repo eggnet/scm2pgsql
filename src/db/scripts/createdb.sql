@@ -45,7 +45,7 @@ CREATE TABLE commits (
     author character varying(255),
     author_email character varying(255),
     comments text,
-    commit_date timestamp without time zone,
+    commit_date timestamp with time zone,
     changed_files text[],
     revision_id character varying(255)
 );

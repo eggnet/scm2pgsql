@@ -8,7 +8,7 @@ import org.eclipse.jgit.errors.MissingObjectException;
 
 public class Main {
 	public static GitParser gitParser = new GitParser();
-	public static void main(String[] args)
+	public static void main(String[] args)	
 	{
 		System.out.println("Scm2Pgsql tool developed by eggnet.");
 		try {
