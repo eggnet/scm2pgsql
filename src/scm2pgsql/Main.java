@@ -3,7 +3,7 @@ package scm2pgsql;
 import java.io.IOException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import git.Git;
-import converters.SVNConverter;
+import db.DbConnection;
 
 public class Main {
 	public static Git gitParser = new Git();
@@ -18,44 +18,23 @@ public class Main {
 			}
 			else
 			{
-				if (args[0].equals("--convert"))
+				try 
 				{
-					if(args[1].equals("SVN") || args[1].equals("svn"))
-					{
-						SVNConverter converter = SVNConverter.getInstance();
-						if(converter.Convert(args[2]))
-							System.out.println("Conversion from SVN to Git was successfull");
-						else
-						{
-							System.out.println("Conversion from SVN to Git has failed");
-							throw new IOException();
-						}
-					}
-					else if(args[1].equals("CVS") || args[1].equals("cvs"))
-					{
-						// TODO @triet add the CVS converter stuff here.
-					}
-					return;
-				}
-				else
+					gitParser.parseRepo(".git");
+				} 
+				catch (MissingObjectException e) 
 				{
-					try {
-						gitParser.parseRepo(".git");
-					} catch (MissingObjectException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+					e.printStackTrace();
+				} 
+				catch (IOException e) 
+				{
+					e.printStackTrace();
 				}
 			}
 		}
 		catch (ArrayIndexOutOfBoundsException e)
 		{
-			System.out.println("Usage scm2pgsql [--convert repositoryType] <input repository>");
-		}
-		catch (IOException e)
-		{
-			System.out.println("The process will terminate due to the failed conversion.");
+			System.out.println("Usage scm2pgsql <input repository>");
 		}
 	}
 }

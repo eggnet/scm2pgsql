@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # This script is used to convert an SVN repository to
 # a git repository.
@@ -15,3 +16,4 @@ fi
 echo "Converting the SVN repository at:" + $1
 echo "NOTE: only include the URL up to the /svn, do NOT include the /trunk at the end."
 git svn clone -s $1 ../temp/svnConverted
+exit 0
