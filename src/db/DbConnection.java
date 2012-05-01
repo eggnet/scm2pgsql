@@ -60,7 +60,7 @@ public class DbConnection {
 	{
 		try {
 			conn = DriverManager.getConnection(connectionString, Resources.dbUser, Resources.dbPassword);
-			sr = new ScriptRunner(conn, true, true);
+			sr = new ScriptRunner(conn, false, true);
 		} 
 		catch (SQLException e) 
 		{
@@ -85,7 +85,6 @@ public class DbConnection {
 			// Reconnect to our new database.
 			connect(Resources.dbUrl + dbName.toLowerCase());
 			
-			System.out.println(this.getClass().getResource("scripts/createdb.sql").getPath());
 			// Now load our default schema in.
 			sr.runScript(new FileReader(this.getClass().getResource("scripts/createdb.sql").getPath()));
 			

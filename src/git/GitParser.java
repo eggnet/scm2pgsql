@@ -66,5 +66,7 @@ public class GitParser {
 		
 		// or
 		loader.copyTo(System.out);
+		
+		db.close();
 	}
 }
