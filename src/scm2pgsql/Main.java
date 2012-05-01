@@ -20,7 +20,7 @@ public class Main {
 			{
 				try 
 				{
-					gitParser.parseRepo(".git");
+					gitParser.parseRepo(args[0]);
 				} 
 				catch (MissingObjectException e) 
 				{

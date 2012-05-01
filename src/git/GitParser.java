@@ -40,8 +40,8 @@ public class GitParser {
 	        .findGitDir() // scan up the file system tree
 	        .build();
 		git = new Git(repoFile);
-		String[] chunks = repoFile.getDirectory().getCanonicalPath().split(File.separator);
-		String repoName = chunks[chunks.length-2];
+		System.out.println(repoFile.getDirectory().getCanonicalPath());
+		String repoName =repoFile.getDirectory().getAbsolutePath().substring(repoFile.getDirectory().getAbsolutePath().lastIndexOf(File.separator)+1);
 		initDb(repoName);
 		
 		
