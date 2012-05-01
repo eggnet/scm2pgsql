@@ -2,11 +2,11 @@ package scm2pgsql;
 
 import java.io.IOException;
 import org.eclipse.jgit.errors.MissingObjectException;
-import git.Git;
+import git.GitParser;
 import converters.SVNConverter;
 
 public class Main {
-	public static Git gitParser = new Git();
+	public static GitParser gitParser = new GitParser();
 	public static void main(String[] args)
 	{
 		System.out.println("Scm2Pgsql tool developed by eggnet.");
@@ -20,7 +20,7 @@ public class Main {
 			{
 				if (args[0].equals("--convert"))
 				{
-					if(args[1].equals("SVN") || args[1].equals("svn"))
+					if(args[1].equalsIgnoreCase("svn"))
 					{
 						SVNConverter converter = SVNConverter.getInstance();
 						if(converter.Convert(args[2]))
@@ -31,7 +31,7 @@ public class Main {
 							throw new IOException();
 						}
 					}
-					else if(args[1].equals("CVS") || args[1].equals("cvs"))
+					else if(args[1].equalsIgnoreCase("cvs"))
 					{
 						// TODO @triet add the CVS converter stuff here.
 					}

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import db.DbConnection;
 
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -19,22 +20,31 @@ import org.eclipse.jgit.treewalk.filter.PathFilter;
 
 import scm2pgsql.Resources;
 
-public class Git {
+public class GitParser {
 	public File repoDir;
 	public Repository repoFile;
-	DbConnection db = DbConnection.getInstance();
-	public void parseRepo(String inDir) throws MissingObjectException, IOException
+	public DbConnection db = DbConnection.getInstance();
+	public Git git;
+	private void initDb(String dbName)
 	{
 		db.connect(Resources.dbUrl);
-
-		repoDir = new File(inDir);
+		db.createDB(dbName);
+	}
+	
+	public void parseRepo(String gitDir) throws MissingObjectException, IOException
+	{	
+		// Initialize the repo directory
+		repoDir = new File(gitDir);
 		repoFile = new RepositoryBuilder() //
 	        .setGitDir(repoDir) // --git-dir if supplied, no-op if null
 	        .findGitDir() // scan up the file system tree
 	        .build();
+		git = new Git(repoFile);
+		String[] chunks = repoFile.getDirectory().getCanonicalPath().split(File.separator);
+		String repoName = chunks[chunks.length-2];
+		initDb(repoName);
 		
-		// First create the new databse for the project
-		db.createDB(dbName);
+		
 		
 		// find the HEAD
 		ObjectId lastCommitId = repoFile.resolve(Constants.HEAD);
