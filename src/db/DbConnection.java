@@ -48,6 +48,13 @@ public class DbConnection {
 	 */
 	public boolean exec(String sql)
 	{
+		//TODO @braden
+		return true;
+	}
+	
+	public boolean execScript(String absPath)
+	{
+		//TODO @braden
 		return true;
 	}
 	
