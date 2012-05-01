@@ -117,4 +117,9 @@ public class DbConnection {
 			return false;
 		}
 	}
+	
+	public boolean InsertCommit(CommitsTO commit)
+	{
+		return true;
+	}
 }

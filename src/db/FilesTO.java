@@ -5,6 +5,16 @@ public class FilesTO {
 	private String file_id;
 	private String file_name;
 	private String commit_id;
+	public FilesTO(String file_id, String file_name, String commit_id,
+			String raw_file, String revision_id) {
+		super();
+		this.file_id = file_id;
+		this.file_name = file_name;
+		this.commit_id = commit_id;
+		this.raw_file = raw_file;
+		this.revision_id = revision_id;
+	}
+
 	private String raw_file;
 	private String revision_id;
 	

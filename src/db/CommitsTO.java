@@ -26,6 +26,19 @@ public class CommitsTO {
 		this.revision_id = revision_id;
 	}
 
+	public CommitsTO(String commit_id, String author, String author_email,
+			String comment, Date commit_date, String[] changed_files,
+			String revision_id) {
+		super();
+		this.commit_id = commit_id;
+		this.author = author;
+		this.author_email = author_email;
+		this.comment = comment;
+		this.commit_date = commit_date;
+		this.changed_files = changed_files;
+		this.revision_id = revision_id;
+	}
+
 	public int getId() {
 		return id;
 	}
