@@ -29,20 +29,20 @@ public class GitParser {
 	private void initialize(String gitDir) throws IOException
 	{
 		repoDir = new File(gitDir);
-		repoFile = new RepositoryBuilder()
+		repoFile = new RepositoryBuilder() //
 			.setGitDir(repoDir)
 			.findGitDir()
 			.build();
 		git = new Git(repoFile);
-		String[] chunks = repoFile.getDirectory().getCanonicalPath().split(File.separator);
-		String repoName = chunks[chunks.length-2];
+		System.out.println(repoFile.getDirectory().getCanonicalPath());
+		String repoName = repoFile.getDirectory().getAbsolutePath().substring(
+				repoFile.getDirectory().getAbsolutePath().lastIndexOf(File.separator)+1);
 		db.connect(Resources.dbUrl);
 		db.createDB(repoName);
 	}
 	
 	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{	
-		// Initialize the repo directory
 		initialize(gitDir);
 		
 		// find the HEAD
@@ -63,6 +63,7 @@ public class GitParser {
 
 		// and then one can use either
 		InputStream in = loader.openStream();
+		
 		// or
 		loader.copyTo(System.out);
 	}
