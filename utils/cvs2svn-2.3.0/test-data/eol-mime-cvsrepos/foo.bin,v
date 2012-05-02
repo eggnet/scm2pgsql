@@ -1,0 +1,42 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+expand	@b@;
+
+
+1.2
+date	2004.07.26.23.38.17;	author kfogel;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.07.19.20.57.24;	author jrandom;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Commit a second revision of every file.
+@
+text
+@#!/bin/sh
+echo 'Hello world!'
+echo 'Hello back at you!'
+@
+
+
+1.1
+log
+@Add a file.
+@
+text
+@d3 1
+@
+

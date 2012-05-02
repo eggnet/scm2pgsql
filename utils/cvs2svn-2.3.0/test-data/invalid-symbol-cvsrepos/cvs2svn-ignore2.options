@@ -1,0 +1,28 @@
+# (Be in -*- python -*- mode.)
+
+# Fix a problem with an invalid symbol by ignoring it using an
+# IgnoreSymbolTransform.
+
+from cvs2svn_lib.symbol_transform import IgnoreSymbolTransform
+
+execfile('cvs2svn-example.options')
+
+name = 'invalid-symbol'
+
+ctx.output_option = NewRepositoryOutputOption(
+    'cvs2svn-tmp/%s--options=cvs2svn-ignore2.options-svnrepos' % (name,),
+    )
+
+run_options.clear_projects()
+
+run_options.add_project(
+    r'test-data/%s-cvsrepos' % (name,),
+    trunk_path='trunk',
+    branches_path='branches',
+    tags_path='tags',
+    symbol_transforms=[
+        IgnoreSymbolTransform(r'SYMBOL'),
+        ],
+    symbol_strategy_rules=global_symbol_strategy_rules,
+    )
+

@@ -2,27 +2,35 @@
 #
 # This script is used to convert an CVS repository to
 # a git repository.
+#
 # Requirements:
-# Have cvps installed and git-core contains git-cvsimport command
+# Have Python 2.X installed
+# Have RCS and CVS installed
+# Have Git 1.5.4.4 or later installed
 #
 
 # Check to see if the argument was supplied.
 # If not then exit violently.
-if [ $# -lt 2 ]
+if [ $# -eq 0 ]
 then
-echo "$0 : You must supply the CVS repository path as the first argument."
-echo "$0 : You must supply the module name (CVSROOT)."
+echo "$0 : You must supply the CVS repository path."
 exit 1
 fi
 
 # Make the conversion here
-echo "Converting the CVS repository at:" + $1
-echo "NOTE: only include the path up to, but not including, the CVSROOT folder (which usually the top level folder). Specify the module as CVSROOT."
+# $1 is the CVS local repo.
+echo "Converting the CVS repository at:" $1
+cd cvs2svn-2.3.0
+./cvs2git --blobfile=cvs2svn-tmp/git-blob.dat --dumpfile=cvs2svn-tmp/git-dump.dat --username=cvs2git $1
+cd ..
 
-# $2 is the CVS Module. Basically it's the top level folder name 
-# Arguments: <CVSROOT path> <Module name>
-# Example (Remote): ./cvstogit.sh :pserver:anonymous@cvs.savannah.gnu.org:/web/url url
-# Example (Local) : ./cvstogit.sh /path/to/local/cvs CVSROOT
+# Initialize the new git repo
+git init --bare --separate-git-dir ../temp/cvsConverted
 
-git cvsimport -p -x -v -d $1 -C ../temp/cvsConverted $2
+#Load the dump files into the git repo
+cd ../temp/cvsConverted
+git fast-import --export-marks=../../cvs2svn-2.3.0/cvs2svn-tmp/gitmarks.dat < ../../cvs2svn-2.3.0/cvs2svn-tmp/git-blob.dat
+git fast-import --import-marks=../../cvs2svn-2.3.0/cvs2svn-tmp/gitmarks.dat < ../../cvs2svn-2.3.0/cvs2svn-tmp/git-dump.dat
+
+# Thats all folks
 exit 0
