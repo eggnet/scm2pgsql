@@ -5,6 +5,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.text.FieldPosition;
+
 import db.ScriptRunner;
 
 import scm2pgsql.Resources;
@@ -141,6 +143,11 @@ public class DbConnection {
 	
 	public boolean InsertCommit(CommitsTO commit)
 	{
+		// Set up for converting dates to correct format
+		FieldPosition pos = new FieldPosition(0);
+	    StringBuffer empty = new StringBuffer();
+	    StringBuffer commit_date = Resources.DBDateFormat.format(commit.getCommit_date(), empty, pos);
+	    
 		// Build the insertion statement
 		String insert = "INSERT INTO commits (id, commit_id, author, author_email, comments, commit_date," +
 				" changed_files, revision_id) VALUES(" +
@@ -149,7 +156,7 @@ public class DbConnection {
 				commit.getAuthor() + ", " + 
 				commit.getAuthor_email() + ", " + 
 				commit.getComment() + ", " + 
-				commit.getCommit_date() + ", " + 
+				commit_date + ", " + 
 				commit.getChanged_files() + ", " + 
 				commit.getRevision_id() + 
 				");";
