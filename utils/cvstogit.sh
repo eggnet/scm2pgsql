@@ -19,7 +19,8 @@ echo "Converting the CVS repository at:" + $1
 echo "NOTE: only include the URL up to the CVSROOT folder (which usually the top level folder)."
 
 # $2 is the CVS Module. Basically it's the top level folder name 
-# Example: .cvstogit.sh :pserver:anonymous@cvs.savannah.gnu.org:/web/url url
+# Arguments: <CVSROOT path> <Module name>
+# Example: ./cvstogit.sh :pserver:anonymous@cvs.savannah.gnu.org:/web/url url
 
 git cvsimport -p -x -v -d $1 -C ../temp/cvsConverted $2
 exit 0
