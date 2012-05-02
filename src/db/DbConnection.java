@@ -156,7 +156,7 @@ public class DbConnection {
 				commit.getAuthor() + ", " + 
 				commit.getAuthor_email() + ", " + 
 				commit.getComment() + ", " + 
-				commit_date + ", " + 
+				commit.getCommit_date().toString() + ", " + 
 				commit.getChanged_files() + ", " + 
 				commit.getRevision_id() + 
 				");";

@@ -13,6 +13,8 @@ public class CommitsTO {
 	private String[] changed_files;
 	private String revision_id;
 	
+	public CommitsTO() { }
+
 	public CommitsTO(int id, String commit_id, String author, String author_email,
 			String comment, Date commit_date, String[] changed_files, String revision_id)
 	{
