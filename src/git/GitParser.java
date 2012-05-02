@@ -3,6 +3,8 @@ package git;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Iterator;
+
 import db.DbConnection;
 
 import org.eclipse.jgit.api.Git;
@@ -42,15 +44,27 @@ public class GitParser {
 	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{	
 		initialize(gitDir);
-		
-		// Go Through each revision
-		// for each revision
-		// 		for each commit
-		//			generate commit record
-		//					
-		
-		
-		
+		// 	for each commit
+		//		generate commit record
+		//			insert into commits values (default, '12431asdfads', 'Braden Simpson', 'braden@uvic.ca', 'This is a comment', '1999-01-08 04:05:06 -8:00', '{file1.java, file2.java, file3.java}', '122341');
+		//		generate file records
+		// 		generate branch records
+		try
+		{
+			RevWalk walk = new RevWalk(repoFile);
+			RevCommit commit = null;
+			Iterable<RevCommit> logs = git.log().call();
+			Iterator<RevCommit> i = logs.iterator();
+			while (i.hasNext())
+			{
+				commit = walk.parseCommit(i.next());
+				System.out.println(commit.getFullMessage());
+			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
 		// find the HEAD
 		ObjectId lastCommitId = repoFile.resolve(Constants.HEAD);
 		// now we have to get the commit
