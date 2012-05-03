@@ -83,8 +83,7 @@ CREATE TABLE files (
     file_id character varying(255),
     file_name character varying(255),
     commit_id character varying(255),
-    raw_file text,
-    branch_id character varying(255)
+    raw_file text
 );
 
 

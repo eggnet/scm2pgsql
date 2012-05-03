@@ -1,5 +1,6 @@
 package git;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -14,6 +15,7 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -113,18 +115,30 @@ public class GitParser {
 			TreeWalk initialCommit = new TreeWalk(repoFile);
 			initialCommit.addTree(commit.getTree());
 			initialCommit.setRecursive(true);
-			Set<String> filenames = new HashSet<String>();
-			while(initialCommit.next())
-			{
-				
-				filenames.add(initialCommit.getPathString());
-			}
-			System.out.println("Number of changed files: " + filenames.size());
+
 			currentCommit.setAuthor(commit.getAuthorIdent().getName());
 			currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
 			currentCommit.setCommit_id(commit.getId().getName());
 			currentCommit.setComment(commit.getFullMessage());
 			currentCommit.setCommit_date(new Date(commit.getCommitTime() * 1000L));
+			
+			Set<String> filenames = new HashSet<String>();
+			while(initialCommit.next())
+			{
+				currentFile = new FilesTO();
+				ObjectLoader objectL = repoFile.open(initialCommit.getObjectId(0));
+				objectL.openStream();
+				ByteArrayOutputStream out = new ByteArrayOutputStream(); 
+				objectL.copyTo(out);
+				String raw = out.toString("UTF-8");
+				filenames.add(initialCommit.getPathString());
+				currentFile.setCommit_id(currentCommit.getCommit_id());				
+				currentFile.setFile_id(initialCommit.getPathString());
+				currentFile.setRaw_file(raw);
+				currentFile.setFile_name(initialCommit.getNameString());
+				db.InsertFiles(currentFile);
+				out.flush();
+			}
 			currentCommit.setChanged_files(filenames);
 			db.InsertCommit(currentCommit);
 		}

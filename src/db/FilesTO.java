@@ -6,6 +6,7 @@ public class FilesTO {
 	private String file_name;
 	private String commit_id;
 	private String raw_file;
+	public FilesTO() { }
 	public FilesTO(String file_id, String file_name, String commit_id,
 			String raw_file) {
 		super();

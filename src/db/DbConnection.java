@@ -64,6 +64,25 @@ public class DbConnection {
 	}
 	
 	/**
+	 * Executes a string of SQL on the current database
+	 * NOTE: this assumes your sql is valid.
+	 * @param sql
+	 * @return true if successful
+	 */
+	public boolean execPreparedStatement(PreparedStatement s)
+	{
+		try {
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+	
+	/**
 	 * Executes a sql script at the given path.
 	 * @param absPath
 	 * @return true if succcessful
@@ -166,16 +185,20 @@ public class DbConnection {
 	
 	public boolean InsertFiles(FilesTO files)
 	{
-		// Build the insertion statement
-		String insert = "INSERT INTO file (id, file_id, file_name, commit_id, raw_file)" +
-				" VALUES(" +
-				"default, " +
-				files.getFile_id() + ", " + 
-				files.getFile_name() + ", " + 
-				files.getCommit_id() + ", " + 
-				files.getRaw_file() + ", " + 
-				");";
-		
-		return exec(insert);
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO files (id, file_id, file_name, commit_id, raw_file)" +
+					" VALUES(default, ?, ?, ?, ?);");
+			s.setString(1, files.getFile_id());
+			s.setString(2, files.getFile_name());
+			s.setString(3, files.getCommit_id());
+			s.setString(4, files.getRaw_file());
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			return false;
+		}
+		return true;
 	}
 }
