@@ -47,7 +47,7 @@ CREATE TABLE commits (
     comments text,
     commit_date timestamp with time zone,
     changed_files text[],
-    revision_id character varying(255)
+    branch_id character varying(255)
 );
 
 
@@ -84,7 +84,7 @@ CREATE TABLE files (
     file_name character varying(255),
     commit_id character varying(255),
     raw_file text,
-    revision_id character varying(255)
+    branch_id character varying(255)
 );
 
 

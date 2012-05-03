@@ -150,16 +150,15 @@ public class DbConnection {
 	    
 		// Build the insertion statement
 		String insert = "INSERT INTO commits (id, commit_id, author, author_email, comments, commit_date," +
-				" changed_files, revision_id) VALUES(" +
-				"default, " +
-				commit.getCommit_id() + ", " + 
-				commit.getAuthor() + ", " + 
-				commit.getAuthor_email() + ", " + 
-				commit.getComment() + ", " + 
-				commit.getCommit_date().toString() + ", " + 
-				commit.getChanged_files() + ", " + 
-				commit.getRevision_id() + 
-				");";
+				" changed_files, branch_id) VALUES(" +
+				"default, '" +
+				commit.getCommit_id() + "', '" + 
+				commit.getAuthor() + "', '" + 
+				commit.getAuthor_email() + "', '" + 
+				commit.getComment() + "', '" + 
+				commit.getCommit_date().toString() + "', '" + 
+				commit.getChanged_filesAsString() + "', '111" +  
+				"');";
 		
 		// Run the query
 		return exec(insert);
@@ -168,14 +167,13 @@ public class DbConnection {
 	public boolean InsertFiles(FilesTO files)
 	{
 		// Build the insertion statement
-		String insert = "INSERT INTO file (id, file_id, file_name, commit_id, raw_file, revision_id)" +
+		String insert = "INSERT INTO file (id, file_id, file_name, commit_id, raw_file)" +
 				" VALUES(" +
 				"default, " +
 				files.getFile_id() + ", " + 
 				files.getFile_name() + ", " + 
 				files.getCommit_id() + ", " + 
 				files.getRaw_file() + ", " + 
-				files.getRevision_id() + 
 				");";
 		
 		return exec(insert);

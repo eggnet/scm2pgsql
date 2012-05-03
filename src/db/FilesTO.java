@@ -5,28 +5,25 @@ public class FilesTO {
 	private String file_id;
 	private String file_name;
 	private String commit_id;
+	private String raw_file;
 	public FilesTO(String file_id, String file_name, String commit_id,
-			String raw_file, String revision_id) {
+			String raw_file) {
 		super();
 		this.file_id = file_id;
 		this.file_name = file_name;
 		this.commit_id = commit_id;
 		this.raw_file = raw_file;
-		this.revision_id = revision_id;
 	}
 
-	private String raw_file;
-	private String revision_id;
 	
 	public FilesTO(int id, String file_id, String file_name, String commit_id,
-			String raw_file, String revision_id) {
+			String raw_file) {
 		super();
 		this.id = id;
 		this.file_id = file_id;
 		this.file_name = file_name;
 		this.commit_id = commit_id;
 		this.raw_file = raw_file;
-		this.revision_id = revision_id;
 	}
 
 	public int getId() {
@@ -67,13 +64,5 @@ public class FilesTO {
 
 	public void setRaw_file(String raw_file) {
 		this.raw_file = raw_file;
-	}
-
-	public String getRevision_id() {
-		return revision_id;
-	}
-
-	public void setRevision_id(String revision_id) {
-		this.revision_id = revision_id;
 	}
 }

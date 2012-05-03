@@ -1,6 +1,7 @@
 package db;
 
 import java.util.Date;
+import java.util.Set;
 
 public class CommitsTO {
 	
@@ -10,13 +11,12 @@ public class CommitsTO {
 	private String author_email;
 	private String comment;
 	private Date commit_date;
-	private String[] changed_files;
-	private String revision_id;
+	private Set<String> changed_files;
 	
 	public CommitsTO() { }
 
 	public CommitsTO(int id, String commit_id, String author, String author_email,
-			String comment, Date commit_date, String[] changed_files, String revision_id)
+			String comment, Date commit_date, Set<String> changed_files)
 	{
 		this.id = id;
 		this.commit_id = commit_id;
@@ -25,12 +25,10 @@ public class CommitsTO {
 		this.comment = comment;
 		this.commit_date = commit_date;
 		this.changed_files = changed_files;
-		this.revision_id = revision_id;
 	}
 
 	public CommitsTO(String commit_id, String author, String author_email,
-			String comment, Date commit_date, String[] changed_files,
-			String revision_id) {
+			String comment, Date commit_date, Set<String> changed_files) {
 		super();
 		this.commit_id = commit_id;
 		this.author = author;
@@ -38,7 +36,6 @@ public class CommitsTO {
 		this.comment = comment;
 		this.commit_date = commit_date;
 		this.changed_files = changed_files;
-		this.revision_id = revision_id;
 	}
 
 	public int getId() {
@@ -89,21 +86,20 @@ public class CommitsTO {
 		this.commit_date = commit_date;
 	}
 
-	public String[] getChanged_files() {
+	public Set<String> getChanged_files() {
 		return changed_files;
 	}
 
-	public void setChanged_files(String[] changed_files) {
+	public void setChanged_files(Set<String> changed_files) {
 		this.changed_files = changed_files;
 	}
 
-	public String getRevision_id() {
-		return revision_id;
+	public String getChanged_filesAsString() {
+		String str = "{";
+		for (String filename: this.getChanged_files())
+			str += filename + ",";
+		str = str.substring(0, str.lastIndexOf(",")-1);
+		str += "}";
+		return str;
 	}
-
-	public void setRevision_id(String revision_id) {
-		this.revision_id = revision_id;
-	}
-		
-
 }
