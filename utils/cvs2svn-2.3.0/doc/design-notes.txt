@@ -1,0 +1,812 @@
+                         How cvs2svn Works
+                         =================
+
+                       Theory and requirements
+                       ------ --- ------------
+
+There are two main problem converting a CVS repository to SVN:
+
+- CVS does not record enough information to determine what actually
+  happened to a repository.  For example, CVS does not record:
+
+  - Which file modifications were part of the same commit
+
+  - The timestamp of tag and branch creations
+
+  - Exactly which revision was the base of a branch (there is
+    ambiguity between x.y, x.y.2.0, x.y.4.0, etc.)
+
+  - When the default branch was changed (for example, from a vendor
+    branch back to trunk).
+
+- The timestamps in a CVS archive are not reliable.  It can easily
+  happen that timestamps are not even monotonic, and large errors (for
+  example due to a failing server clock battery) are not unusual.
+
+The absolutely crucial, sine qua non requirement of a conversion is
+that the dependency relationships within a file be honored, mainly:
+
+- A revision depends on its predecessor
+
+- A branch creation depends on the revision from which it branched,
+  and commits on the branch depend on the branch creation
+
+- A tag creation depends on the revision being tagged
+
+These dependencies are reliably defined in the CVS repository, and
+they trump all others, so they are the scaffolding of the conversion.
+
+Moreover, it is highly desirable that the timestamps of the SVN
+commits be monotonically increasing.
+
+Within these constraints we also want the results of the conversion to
+resemble the history of the CVS repository as closely as possible.
+For example, the set of file changes grouped together in an SVN commit
+should be the same as the files changed within the corresponding CVS
+commit, insofar as that can be achieved in a manner that is consistent
+with the dependency requirements.  And the SVN commit timestamps
+should recreate the time of the CVS commit as far as possible without
+violating the monotonicity requirement.
+
+The basic idea of the conversion is this: create the largest
+conceivable changesets, then split up changesets as necessary to break
+any cycles in the graph of changeset dependencies.  When all cycles
+have been removed, then do a topological sort of the changesets (with
+ambiguities resolved using CVS timestamps) to determine a
+self-consistent changeset commit order.
+
+The quality of the conversion (not in terms of correctness, but in
+terms of minimizing the number of svn commits) is mostly determined by
+the cleverness of the heuristics used to split up cycles.  And all of
+this has to be affordable, especially in terms of conversion time and
+RAM usage, for even the largest CVS repositories.
+
+
+                            Implementation
+                            --------------
+
+A cvs2svn run consists of a number of passes.  Each pass saves the
+data it produces to files on disk, so that a) we don't hold huge
+amounts of state in memory, and b) the conversion process is
+resumable.
+
+CollectRevsPass (formerly called pass1)
+===============
+
+The goal of this pass is to collect from the CVS files all of the data
+that will be required for the conversion.  If the --use-internal-co
+option was used, this pass also collects the file delta data; for
+-use-rcs or -use-cvs, the actual file contents are read again in
+OutputPass.
+
+To collect this data, we walk over the repository, collecting data
+about the RCS files into an instance of CollectData.  Each RCS file is
+processed with rcsparse.parse(), which invokes callbacks from an
+instance of cvs2svn's _FileDataCollector class (which is a subclass of
+rcsparse.Sink).
+
+While a file is being processed, all of the data for the file (except
+for contents and log messages) is held in memory.  When the file has
+been read completely, its data is converted into an instance of
+CVSFileItems, and this instance is manipulated a bit then pickled and
+stored to 'cvs-items.pck'.
+
+For each RCS file, the first thing the parser encounters is the
+administrative header, including the head revision, the principal
+branch, symbolic names, RCS comments, etc.  The main thing that
+happens here is that _FileDataCollector.define_tag() is invoked on
+each symbolic name and its attached revision, so all the tags and
+branches of this file get collected.
+
+Next, the parser hits the revision summary section.  That's the part
+of the RCS file that looks like this:
+
+   1.6
+   date 2002.06.12.04.54.12;    author captnmark;       state Exp;
+   branches
+        1.6.2.1;
+   next 1.5;
+
+   1.5
+   date 2002.05.28.18.02.11;    author captnmark;       state Exp;
+   branches;
+   next 1.4;
+
+   [...]
+
+For each revision summary, _FileDataCollector.define_revision() is
+invoked, recording that revision's metadata in various variables of
+the _FileDataCollector class instance.
+
+Next, the parser encounters the *real* revision data, which has the
+log messages and file contents.  For each revision, it invokes
+_FileDataCollector.set_revision_info(), which sets some more fields in
+_RevisionData.  It also invokes RevisionRecorder.record_text(), which
+gives the RevisionRecorder the chance to record the file text if
+desired.  record_test() is allowed to return a token, which is carried
+along with the CVSRevision data and can be used by RevisionReader to
+retrieve the text in OutputPass.
+
+When the parser is done with the file, _ProjectDataCollector takes the
+resulting CVSFileItems object and manipulates it to handle some CVS
+features:
+
+   - If the file had a vendor branch, make some adjustments to the
+     file dependency graph to reflect implicit dependencies related to
+     the vendor branch.  Also delete the 1.1 revision in the usual
+     case that it doesn't contain any useful information.
+
+   - If the file was added on a branch rather than on trunk, then
+     delete the "dead" 1.1 revision on trunk in the usual case that it
+     doesn't contain any useful information.
+
+   - If the file was added on a branch after it already existed on
+     trunk, then recent versions of CVS add an extra "dead" revision
+     on the branch.  Remove this revision in the usual case that it
+     doesn't contain any useful information, and sever the branch from
+     trunk (since the branch version is independent of the trunk
+     version).
+
+   - If the conversion was started with the --trunk-only option, then
+
+     1. graft any non-trunk default branch revisions onto trunk
+        (because they affect the history of the default branch), and
+
+     2. delete all branches and tags and all remaining branch
+        revisions.
+
+Finally, the RevisionRecorder.finish_file() callback is called, the
+CVSFileItems instance is stored to a database, and statistics about
+how symbols were used in the file are recorded.
+
+That's it -- the RCS file is done.
+
+When every CVS file is done, CollectRevsPass is complete, and:
+
+   - The basic information about each file (filename, path, etc) is
+     written as a pickled CVSFile instance to 'cvs-files.db'.
+
+   - Information about each symbol seen, along with statistics like
+     how often it was used as a branch or tag, is written as a pickled
+     symbol_statistics._Stat object to 'symbol-statistics.pck'.  This
+     includes the following information:
+
+         ID -- a unique positive identifying integer
+
+         NAME -- the symbol name
+
+         TAG_CREATE_COUNT -- the number of times the symbol was used
+             as a tag
+
+         BRANCH_CREATE_COUNT -- the number of times the symbol was
+             used as a branch
+
+         BRANCH_COMMIT_COUNT -- the number of files in which there was
+             a commit on a branch with this name.
+
+         BRANCH_BLOCKERS -- the set of other symbols that ever
+             sprouted from a branch with this name.  (A symbol cannot
+             be excluded from the conversion unless all of its
+             blockers are also excluded.)
+
+         POSSIBLE_PARENTS -- a count of in how many files each other
+             branch could have served as the symbol's source.
+
+     These data are used to look for inconsistencies in the use of
+     symbols under CVS and to decide which symbols can be excluded or
+     forced to be branches and/or tags.  The POSSIBLE_PARENTS data is
+     used to pick the "optimum" parent from which the symbol should
+     sprout in as many files as possible.
+
+     For a multiproject conversion, distinct symbol records (and IDs)
+     are created for symbols in separate projects, even if they have
+     the same name.  This is to prevent symbols in separate projects
+     from being filled at the same time.
+
+   - Information about each CVS event is converted into a CVSItem
+     instance and stored to 'cvs-items.pck'.  There are several types
+     of CVSItems:
+
+         CVSRevision -- A specific revision of a specific CVS file.
+
+         CVSBranch -- The creation of a branch tag in a specific CVS
+             file.
+
+         CVSTag -- The creation of a non-branch tag in a specific CVS
+             file.
+
+     The CVSItems are grouped into CVSFileItems instances, one per
+     CVSFile.  But a multi-file commit will still be scattered all
+     over the place.
+
+   - Selected metadata for each CVS revision, including the author and
+     log message, is written to 'metadata-index.dat' and
+     'metadata.pck'.  The purpose is twofold: first, to save space by
+     not having to save this information multiple times, and second
+     because CVSRevisions that have the same metadata are candidates
+     to be combined into an SVN changeset.
+
+     First, an SHA digest is created for each set of metadata.  The
+     digest is constructed so that CVSRevisions that can be combined
+     are all mapped to the same digest.  CVSRevisions that were part
+     of a single CVS commit always have a common author and log
+     message, therefore these fields are always included in the
+     digest.  Moreover:
+
+     - if ctx.cross_project_commits is False, we avoid combining CVS
+       revisions from separate projects by including the project.id in
+       the digest.
+
+     - if ctx.cross_branch_commits is False, we avoid combining CVS
+       revisions from different branches by including the branch name
+       in the digest.
+
+     During the database creation phase, the database keeps track of a
+     map
+
+       digest (20-byte string) -> metadata_id (int)
+
+     to allow the record for a set of metadata to be located
+     efficiently.  As data are collected, it stores a map
+
+       metadata_id (int) -> (author, log_msg,) (tuple)
+
+     into the database for use in future passes.  CVSRevision records
+     include the metadata_id.
+
+During this run, each CVSFile, Symbol, CVSItem, and metadata record is
+assigned an arbitrary unique ID that is used throughout the conversion
+to refer to it.
+
+
+CleanMetadataPass
+=================
+
+Encode the cvs revision metadata as UTF-8, ensuring that all entries
+can be decoded using the chosen encodings.  Output the results to
+'metadata-clean-index.dat' and 'metadata-clean.pck'.
+
+
+CollateSymbolsPass
+==================
+
+Use the symbol statistics collected in CollectRevsPass and any runtime
+options to determine which symbols should be treated as branches,
+which as tags, and which should be excluded from the conversion
+altogether.
+
+Create 'symbols.pck', which contains a pickle of a list of TypedSymbol
+(Branch, Tag, or ExcludedSymbol) instances indicating how each symbol
+should be processed in the conversion.  The IDs used for a TypedSymbol
+is the same as the ID allocated to the corresponding symbol in
+CollectRevsPass, so references in CVSItems do not have to be updated.
+
+
+FilterSymbolsPass
+=================
+
+This pass works through the CVSFileItems instances stored in
+'cvs-items.pck', processing all of the items from each file as a
+group.  (This is the last pass in which all of the CVSItems for a file
+are in memory at once.)  It does the following things:
+
+   - Exclude any symbols that CollateSymbolsPass determined should be
+     excluded, and any revisions on such branches.  Also delete
+     references from other CVSItems to those that are being deleted.
+
+   - Transform any branches to tags or vice versa, also depending on
+     the results of CollateSymbolsPass, and fix up the references from
+     other CVSItems.
+
+   - Decide what line of development to use as the parent for each
+     symbol in the file, and adjust the file's dependency tree
+     accordingly.
+
+   - For each CVSRevision, record the list of symbols that the
+     revision opens and closes.
+
+   - Write a summary of each surviving CVSRevision to
+     'revs-summary.txt'.  Each line of the file has the format
+
+         METADATA_ID TIMESTAMP CVS_REVISION
+
+     where TIMESTAMP is a fixed-width timestamp, and CVS_REVISION is
+     the pickled CVSRevision in a format that does not contain any
+     newlines.  These summaries will be sorted in
+     SortRevisionSummaryPass then used by InitializeChangesetsPass to
+     create preliminary RevisionChangesets.
+
+   - Write a summary of CVSSymbols to 'symbols-summary.txt'.  Each
+     line of the file has the format
+
+         SYMBOL_ID CVS_SYMBOL
+
+     where CVS_SYMBOL is the pickled CVSSymbol in a format that does
+     not contain any newlines.  This information will be sorted by
+     SYMBOL_ID in SortSymbolSummaryPass then used to create
+     preliminary SymbolChangesets.
+
+
+SortRevisionSummaryPass
+=======================
+
+Sort the revision summary written by FilterSymbolsPass, creating
+'revs-summary-s.txt'.  The sort groups items that might be added to
+the same changeset together and, within a group, sorts revisions by
+timestamp.  This step makes it easy for InitializeChangesetsPass to
+read the initial draft of RevisionChangesets straight from the file.
+
+
+SortSymbolSummaryPass
+=====================
+
+Sort the symbol summary written by FilterSymbolsPass, creating
+'symbols-summary-s.txt'.  The sort groups together symbol items that
+might be added to the same changeset (though not in anything
+resembling chronological order).  The output of this pass is used by
+InitializeChangesetsPass.
+
+
+InitializeChangesetsPass
+========================
+
+This pass creates first-draft changesets, splitting them using
+COMMIT_THRESHOLD and breaking up any revision changesets that have
+internal dependencies.
+
+The raw material for creating revision changesets is
+'revs-summary-s.txt', which already has CVSRevisions sorted in such a
+way that potential changesets are grouped together and sorted by date.
+The contents of this file are read line by line, and the corresponding
+CVSRevisions are accumulated into a changeset.  Whenever the
+metadata_id changes, or whenever there is a time gap of more than
+COMMIT_THRESHOLD (currently set to 5 minutes) between CVSRevisions,
+then a new changeset is started.
+
+At this point a revision changeset can have internal dependencies if
+two commits were made to the same file with the same log message
+within COMMIT_THRESHOLD of each other.  The next job of this pass is
+to split up changesets in such a way to break such internal
+dependencies.  This is done by sorting the CVSRevisions within a
+changeset by timestamp, then choosing the split point that breaks the
+most internal dependencies.  This procedure is continued recursively
+until there are no more dependencies internal to a single changeset.
+
+Analogously, the CVSSymbol items from 'symbols-summary-s.txt' are
+grouped into symbol changesets.  (Symbol changesets cannot have
+internal dependencies, so there is no need to break them up at this
+stage.)
+
+Finally, this pass writes a CVSItem database with the CVSItems written
+in order grouped by the preliminary changeset to which they belong.
+Even though the preliminary changesets still have to be split up to
+form final changesets, grouping the CVSItems this way improves the
+locality of disk accesses and thereby speeds up later passes.
+
+The result of this pass is two databases:
+
+   - 'cvs-item-to-changeset.dat', which maps CVSItem ids to the id of
+     the changeset containing the item, and
+
+   - 'changesets.pck' and 'changesets-index.dat', which contain the
+     changeset objects themselves, indexed by changeset id.
+
+   - 'cvs-items-sorted-index.dat' and 'cvs-items-sorted.pck', which
+     contain the pickled CVSItems ordered by changeset.
+
+
+BreakRevisionChangesetCyclesPass
+================================
+
+There can still be cycles in the dependency graph of
+RevisionChangesets caused by:
+
+   - Interleaved commits.  Since CVS commits are not atomic, it can
+     happen that two commits are in progress at the same time and each
+     alters the same two files, but in different orders.  These should
+     be small cycles involving only a few revision changesets.  To
+     resolve these cycles, one or more of the RevisionChangesets have
+     to be split up (eventually becoming separate svn commits).
+
+   - Cycles involving a RevisionChangeset formed by the accidental
+     combination of unrelated items within a short period of time that
+     have the same author and log message.  These should also be small
+     cycles involving only a few changesets.
+
+The job of this pass is to break up such cycles (those involving only
+CVSRevisions).
+
+This pass works by building up the graph of revision changesets and
+their dependencies in memory, then attempting a topological sort of
+the changesets.  Whenever the topological sort stalls, that implies
+the existence of a cycle, one of which can easily be determined.  This
+cycle is broken through the use of heuristics that try to determine an
+"efficient" way of splitting one or more of the changesets that are
+involved.
+
+The new RevisionChangesets are written to
+'cvs-item-to-changeset-revbroken.dat', 'changesets-revbroken.pck', and
+'changesets-revbroken-index.dat', along with the unmodified
+SymbolChangesets.  These files are in the same format as the analogous
+files produced by InitializeChangesetsPass.
+
+
+RevisionTopologicalSortPass
+===========================
+
+Topologically sort the RevisionChangesets, thereby picking the order
+in which the RevisionChangesets will be committed.  (Since the
+previous pass eliminated any dependency cycles, this sort is
+guaranteed to succeed.)  Ambiguities in the topological sort are
+resolved using the changesets' timestamps.  Then simplify the
+changeset graph into a linear chain by converting each
+RevisionChangeset into an OrderedChangeset that stores dependency
+links only to its commit-order predecessor and successor.  This
+simplified graph enforces the commit order that resulted from the
+topological sort, even after the SymbolChangesets are added back into
+the graph later.  Store the OrderedChangesets into
+'changesets-revsorted.pck' and 'changesets-revsorted-index.dat' along
+with the unmodified SymbolChangesets.
+
+
+BreakSymbolChangesetCyclesPass
+==============================
+
+It is possible for there to be cycles in the graph of SymbolChangesets
+caused by:
+
+   - Split creation of branches.  It is possible that branch A depends
+     on branch B in one file, but B depends on A in another file.
+     These cycles can be large, but they only involve
+     SymbolChangesets.
+
+Break up such dependency loops.  Output the results to
+'cvs-item-to-changeset-symbroken.dat',
+'changesets-symbroken-index.dat', and 'changesets-symbroken.pck'.
+
+
+BreakAllChangesetCyclesPass
+===========================
+
+The complete changeset graph (including both RevisionChangesets and
+BranchChangesets) can still have dependency cycles cause by:
+
+   - Split creation of branches.  The same branch tag can be added to
+     different files at completely different times.  It is possible
+     that the revision that was branched later depends on a
+     RevisionChangeset that involves a file on the branch that was
+     created earlier.  These cycles can be large, but they always
+     involve a SymbolChangeset.  To resolve these cycles, the
+     SymbolChangeset is split up into two changesets.
+
+In fact, tag changesets do not have to be considered--CVSTags cannot
+participate in dependency cycles because no other CVSItem can depend
+on a CVSTag.
+
+Since the input of this pass has been through
+RevisionTopologicalSortPass, all revision cycles have already been
+broken up and the order that the RevisionChangesets will be committed
+has been determined.  In this pass, the complete changeset graph is
+created in memory, including the linear list of OrderedChangesets from
+RevisionTopologicalSortPass plus all of the symbol changesets.
+Because this pass doesn't break up any OrderedChangesets, it is
+constrained to finding places within the revision changeset sequence
+in which the symbol changeset commits can be inserted.
+
+The new changesets are written to
+'cvs-item-to-changeset-allbroken.dat', 'changesets-allbroken.pck', and
+'changesets-allbroken-index.dat', which are in the same format as the
+analogous files produced by InitializeChangesetsPass.
+
+
+TopologicalSortPass
+===================
+
+Now that the earlier passes have broken up any dependency cycles among
+the changesets, it is possible to order all of the changesets in such
+a way that all of a changeset's dependencies are committed before the
+changeset itself.  This pass does so by again building up the graph of
+changesets in memory, then at each step picking a changeset that has
+no remaining dependencies and removing it from the graph.  Whenever
+more than one dependency-free changeset is available, symbol
+changesets are chosen before revision changesets.  As changesets are
+processed, the timestamp sequence is ensured to be monotonic by the
+simple expedient of adjusting retrograde timestamps to be later than
+their predecessor.  Timestamps that lie in the future, on the other
+hand, are assumed to be bogus and are adjusted backwards, also to be
+just later than their predecessor.
+
+This pass writes a line to 'changesets-s.txt' for each
+RevisionChangeset, in the order that the changesets should be
+committed.  Each lines contains
+
+    CHANGESET_ID TIMESTAMP
+
+where CHANGESET_ID is the id of the changeset in the
+'changesets-allbroken' databases and TIMESTAMP is the timstamp that
+should be assigned to it when it is committed.  Both values are
+written in hexadecimal.
+
+
+CreateRevsPass (formerly called pass5)
+==============
+
+This pass generates SVNCommits from Changesets and records symbol
+openings and closings.  (One Changeset can result in multiple
+SVNCommits, for example if it causes symbols to be filled or copies to
+a vendor branch.)
+
+This pass does the following:
+
+1. Creates a database file to map Subversion revision numbers to
+   SVNCommit instances ('svn-commits-index.dat' and
+   'svn-commits.pck').  Creates another database file to map CVS
+   Revisions to their Subversion Revision numbers
+   ('cvs-revs-to-svn-revnums.db').
+
+2. When a file is copied to a symbolic name in cvs2svn, it is copied
+   from a specific source: either a CVSRevision, or a copy created by
+   a previous CVSBranch of the file.  The copy has to be made from an
+   SVN revision that is during the lifetime of the source.  The SVN
+   revision when the source was created is called the symbol's
+   "opening", and the SVN revision when it was deleted or overwritten
+   is called the symbol's "closing".  In this pass, the
+   SymbolingsLogger class writes out a line to 'symbolic-names.txt'
+   for each symbol opening or closing.  Note that some openings do not
+   have closings, namely if the corresponding source is still present
+   at the HEAD revision.
+
+   The format of each line is:
+
+       SYMBOL_ID SVN_REVNUM TYPE CVS_SYMBOL_ID
+
+   For example:
+
+       1c 234 O 1a7
+       34 245 O 1a9
+       18a 241 C 1a7
+       122 201 O 1b3
+
+   Here is what the columns mean:
+
+   SYMBOL_ID -- The id of the branch or tag that has an opening in
+       this SVN_REVNUM, in hexadecimal.
+
+   SVN_REVNUM -- The Subversion revision number in which the opening
+       or closing occurred.  (There can be multiple openings and
+       closings per SVN_REVNUM).
+
+   TYPE -- "O" for openings and "C" for closings.
+
+   CVS_SYMBOL_ID -- The id of the CVSSymbol instance whose opening or
+       closing is being described, in hexadecimal.
+
+   Each CVSSymbol that tags a non-dead file has exactly one opening
+   and either zero or one closing.  The closing, if it exists, always
+   occurs in a later SVN revision than the opening.
+
+   See SymbolingsLogger for more details.
+
+
+SortSymbolsPass (formerly called pass6)
+===============
+
+This pass sorts 'symbolic-names.txt' into 'symbolic-names-s.txt'.
+This orders the file first by symbol ID, and second by Subversion
+revision number, thus grouping all openings and closings for each
+symbolic name together.
+
+
+IndexSymbolsPass (formerly called pass7)
+================
+
+This pass iterates through all the lines in 'symbolic-names-s.txt',
+writing out a pickle file ('symbol-offsets.pck') mapping SYMBOL_ID to
+the file offset in 'symbolic-names-s.txt' where SYMBOL_ID is first
+encountered.  This will allow us to seek to the various offsets in the
+file and sequentially read only the openings and closings that we
+need.
+
+
+OutputPass (formerly called pass8)
+==========
+
+This pass opens the svn-commits database and sequentially plays out
+all the commits to either a Subversion repository or to a dumpfile.
+It also decides what sources to use to fill symbols.
+
+In --dumpfile mode, the result of this pass is a Subversion repository
+dumpfile (suitable for input to 'svnadmin load').  The dumpfile is the
+data's last static stage: last chance to check over the data, run it
+through svndumpfilter, move the dumpfile to another machine, etc.
+
+When not in --dumpfile mode, no full dumpfile is created.  Instead,
+miniature dumpfiles representing a single revisions are created,
+loaded into the repository, and then removed.
+
+In both modes, the dumpfile revisions are created by walking through
+'data.s-revs.txt'.
+
+The database 'mirror-nodes.db' holds a skeletal mirror of the
+repository structure at each SVN revision.  This mirror keeps track of
+which files existed on each LOD, but does not record any file
+contents.  cvs2svn requires this information to decide which paths to
+copy when filling branches and tags.
+
+When .cvsignore files are modified, cvs2svn computes the corresponding
+svn:ignore properties and applies the properties to the parent
+directory.  The .cvsignore files themselves are not included in the
+output unless the --keep-cvsignore option was specified.  But in
+either case, the .cvsignore files are recorded within the repository
+mirror as if they were being written to disk, to ensure that the
+containing directory is not pruned if the directory in CVS still
+contained a .cvsignore file.
+
+
+                  ===============================
+                      Branches and Tags Plan.
+                  ===============================
+
+This pass is also where tag and branch creation is done.  Since
+subversion does tags and branches by copying from existing revisions
+(then maybe editing the copy, making subcopies underneath, etc), the
+big question for cvs2svn is how to achieve the minimum number of
+operations per creation.  For example, if it's possible to get the
+right tag by just copying revision 53, then it's better to do that
+than, say, copying revision 51 and then sub-copying in bits of
+revision 52 and 53.
+
+Tags are created as soon as cvs2svn encounters the last CVS Revision
+that is a source for that tag.  The whole tag is created in one
+Subversion commit.
+
+Branches are created as soon as all of their prerequisites are in
+place.  If a branch creation had to be broken up due to dependency
+cycles, then non-final parts are also created as soon as their
+prerequisites are ready.  In such a case, the SymbolChangeset
+specifies how much of the branch can be created in each step.
+
+How just-in-time branch creation works:
+
+In order to make the "best" set of copies/deletes when creating a
+branch, cvs2svn keeps track of two sets of trees while it's making
+commits:
+
+   1. A skeleton mirror of the subversion repository, that is, a
+      record of which file existed on which LOD for each SVN revision.
+
+   2. A tree for each CVS symbolic name, and the svn file/directory
+      revisions from which various parts of that tree could be copied.
+
+Each LOD is recorded as a tree using the following schema: unique keys
+map to marshal.dumps() representations of dictionaries, which in turn
+map path component names to other unique keys:
+
+   root_key  ==> { entryname1 : entrykey1, entryname2 : entrykey2, ... }
+   entrykey1 ==> { entrynameX : entrykeyX, ... }
+   entrykey2 ==> { entrynameY : entrykeyY, ... }
+   entrykeyX ==> { etc, etc ...}
+   entrykeyY ==> { etc, etc ...}
+
+(The leaf nodes -- files -- are represented by None.)
+
+The repository mirror allows cvs2svn to remember what paths exist in
+what revisions.
+
+For details on how branches and tags are created, please see the
+docstring the SymbolingsLogger class (and its methods).
+
+-*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*-
+- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -
+-*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*- -*-
+
+Some older notes and ideas about cvs2svn.  Not deleted, because they
+may contain suggestions for future improvements in design.
+
+-----------------------------------------------------------------------
+
+An email from John Gardiner Myers <jgmyers@speakeasy.net> about some
+considerations for the tool.
+
+------
+From: John Gardiner Myers <jgmyers@speakeasy.net>
+Subject: Thoughts on CVS to SVN conversion
+To: gstein@lyra.org
+Date: Sun, 15 Apr 2001 17:47:10 -0700
+
+Some things you may want to consider for a CVS to SVN conversion utility:
+
+If converting a CVS repository to SVN takes days, it would be good for
+the conversion utility to keep its progress state on disk.  If the
+conversion fails halfway through due to a network outage or power
+failure, that would allow the conversion to be resumed where it left off
+instead of having to start over from an empty SVN repository.
+
+It is a short step from there to allowing periodic updates of a
+read-only SVN repository from a read/write CVS repository.  This allows
+the more relaxed conversion procedure:
+
+1) Create SVN repository writable only by the conversion tool.
+2) Update SVN repository from CVS repository.
+3) Announce the time of CVS to SVN cutover.
+4) Repeat step (2) as needed.
+5) Disable commits to CVS repository, making it read-only.
+6) Repeat step (2).
+7) Enable commits to SVN repository.
+8) Wait for developers to move their workspaces to SVN.
+9) Decomission the CVS repository.
+
+You may forward this message or parts of it as you seem fit.
+------
+
+-----------------------------------------------------------------------
+
+Further design thoughts from Greg Stein <gstein@lyra.org>
+
+* timestamp the beginning of the process. ignore any commits that
+  occur after that timestamp; otherwise, you could miss portions of a
+  commit (e.g. scan A; commit occurs to A and B; scan B; create SVN
+  revision for items in B; we missed A)
+
+* the above timestamp can also be used for John's "grab any updates
+  that were missed in the previous pass."
+
+* for each file processed, watch out for simultaneous commits. this
+  may cause a problem during the reading/scanning/parsing of the file,
+  or the parse succeeds but the results are garbaged. this could be
+  fixed with a CVS lock, but I'd prefer read-only access.
+
+  algorithm: get the mtime before opening the file. if an error occurs
+  during reading, and the mtime has changed, then restart the file. if
+  the read is successful, but the mtime changed, then restart the
+  file.
+
+* use a separate log to track unique branches and non-branched forks
+  of revision history (Q: is it possible to create, say, 1.4.1.3
+  without a "real" branch?). this log can then be used to create a
+  /branches/ directory in the SVN repository.
+
+  Note: we want to determine some way to coalesce branches across
+  files. It can't be based on name, though, since the same branch name
+  could be used in multiple places, yet they are semantically
+  different branches. Given files R, S, and T with branch B, we can
+  tie those files' branch B into a "semantic group" whenever we see
+  commit groups on a branch touching multiple files. Files that are
+  have a (named) branch but no commits on it are simply ignored. For
+  each "semantic group" of a branch, we'd create a branch based on
+  their common ancestor, then make the changes on the children as
+  necessary. For single-file commits to a branch, we could use
+  heuristics (pathname analysis) to add these to a group (and log what
+  we did), or we could put them in a "reject" kind of file for a human
+  to tell us what to do (the human would edit a config file of some
+  kind to instruct the converter).
+
+* if we have access to the CVSROOT/history, then we could process tags
+  properly. otherwise, we can only use heuristics or configuration
+  info to group up tags (branches can use commits; there are no
+  commits associated with tags)
+
+* ideally, we store every bit of data from the ,v files to enable a
+  complete restoration of the CVS repository. this could be done by
+  storing properties with CVS revision numbers and stuff (i.e. all
+  metadata not already embodied by SVN would go into properties)
+
+* how do we track the "states"? I presume "dead" is simply deleting
+  the entry from SVN. what are the other legal states, and do we need
+  to do anything with them?
+
+* where do we put the "description"? how about locks, access list,
+  keyword flags, etc.
+
+* note that using something like the SourceForge repository will be an
+  ideal test case. people *move* their repositories there, which means
+  that all kinds of stuff can be found in those repositories, from
+  wherever people used to run them, and under whatever development
+  policies may have been used.
+
+  For example: I found one of the projects with a "permissions 644;"
+  line in the "gnuplot" repository.  Most RCS releases issue warnings
+  about that (although they properly handle/skip the lines), and CVS
+  ignores RCS newphrases altogether.
+
+# vim:tw=70

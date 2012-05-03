@@ -1,0 +1,34 @@
+# (Be in -*- python -*- mode.)
+
+# Fix a problem with multiply-defined symbols by ignoring one copy of
+# each symbol.
+
+from cvs2svn_lib.symbol_transform import SymbolMapper
+
+execfile('cvs2svn-example.options')
+
+name = 'multiply-defined-symbols'
+
+ctx.output_option = NewRepositoryOutputOption(
+    'cvs2svn-tmp/%s--options=cvs2svn-ignore.options-svnrepos' % (name,),
+    )
+
+run_options.clear_projects()
+
+filename = 'test-data/%s-cvsrepos/proj/default,v' % (name,)
+symbol_mapper = SymbolMapper([
+    (filename, 'BRANCH', '1.2.4', None),
+    (filename, 'TAG', '1.2', None),
+    ])
+
+run_options.add_project(
+    r'test-data/%s-cvsrepos' % (name,),
+    trunk_path='trunk',
+    branches_path='branches',
+    tags_path='tags',
+    symbol_transforms=[
+        symbol_mapper,
+        ],
+    symbol_strategy_rules=global_symbol_strategy_rules,
+    )
+

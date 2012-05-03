@@ -1,0 +1,8 @@
+This repository is for testing that setting of svn:eol-style works as
+expected, that the mime mapper also works, and that mime types and eol
+styles interact with each other correctly.  Issue #39 has more about
+how these interactions work.
+
+The 'mime-mappings.txt' file for this repository is stored right here,
+in the repository itself.  It won't be converted because it doesn't
+end with ,v.
