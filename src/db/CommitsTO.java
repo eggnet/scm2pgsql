@@ -12,6 +12,9 @@ public class CommitsTO {
 	private String comment;
 	private Date commit_date;
 	private Set<String> changed_files;
+	private Set<String> file_structure;
+
+	private String branch_id;
 	
 	public CommitsTO() { }
 
@@ -36,6 +39,22 @@ public class CommitsTO {
 		this.comment = comment;
 		this.commit_date = commit_date;
 		this.changed_files = changed_files;
+	}
+	
+	public Set<String> getFile_structure() {
+		return file_structure;
+	}
+	
+	public void setFile_structure(Set<String> fileStructure) {
+		file_structure = fileStructure;
+	}
+
+	public String getBranch_id() {
+		return branch_id;
+	}
+	
+	public void setBranch_id(String branchId) {
+		branch_id = branchId;
 	}
 
 	public int getId() {

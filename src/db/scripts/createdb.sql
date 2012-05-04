@@ -47,6 +47,7 @@ CREATE TABLE commits (
     comments text,
     commit_date timestamp with time zone,
     changed_files text[],
+    file_structure text[],
     branch_id character varying(255)
 );
 
@@ -133,6 +134,15 @@ REVOKE ALL ON SCHEMA public FROM postgres;
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
+--
+-- Name: branches; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE branches (
+    branch_id character varying (255),
+    branch_name character varying(100),
+    commit_id character varying(255)
+);
 
 --
 -- PostgreSQL database dump complete

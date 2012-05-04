@@ -24,8 +24,10 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 
 import scm2pgsql.Resources;
+import db.BranchEntryTO;
 import db.CommitsTO;
 import db.DbConnection;
 import db.FilesTO;
@@ -58,89 +60,140 @@ public class GitParser {
 	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{	
 		initialize(gitDir);
-		// 	for each commit
-		//		generate commit record
-		//			insert into commits values (default, '12431asdfads', 'Braden Simpson', 'braden@uvic.ca', 'This is a comment', '1999-01-08 04:05:06 -8:00', '{file1.java, file2.java, file3.java}', '122341');
-		//		generate file records
-		// 		generate branch records
+		/**
+			for each branch 
+				for each commit
+					generate commit record
+						insert into commits values (default, '12431asdfads', 'Braden Simpson', 'braden@uvic.ca', 'This is a comment', '1999-01-08 04:05:06 -8:00', '{file1.java, file2.java, file3.java}', '122341');
+					generate file records
+					generate branch record for commit 
+		*/
 		try
 		{
 			List<Ref> branches = git.branchList().call();
-			RevWalk walk = new RevWalk(repoFile);
-			RevCommit commit = null;
-			RevCommit prevCommit = null;
-			Iterable<RevCommit> logs = git.log().call();
-			Iterator<RevCommit> i = logs.iterator();
-			CommitsTO currentCommit;
-			FilesTO currentFile;
-			commit = walk.parseCommit(i.next());
-			ObjectReader reader = repoFile.newObjectReader();
-			while (i.hasNext())	// For each commit
+			for (Ref branch : branches)
 			{
+				git.checkout().setName(branch.getName()).call();
 				System.out.println(repoFile.getFullBranch());
+				RevWalk walk = new RevWalk(repoFile);
+				RevCommit commit = null;
+				RevCommit prevCommit = null;
+				Iterable<RevCommit> logs = git.log().call();
+				Iterator<RevCommit> i = logs.iterator();
+				CommitsTO currentCommit;
+				BranchEntryTO currentBranchEntry;
+				FilesTO currentFile;
+				commit = walk.parseCommit(i.next());
+				ObjectReader reader = repoFile.newObjectReader();
+				while (i.hasNext())	// For each commit
+				{
+					currentCommit = new CommitsTO();
+					currentBranchEntry = new BranchEntryTO();
+					if (prevCommit != null) commit = prevCommit;
+					if (i.hasNext()) prevCommit = walk.parseCommit(i.next());
+					else prevCommit = walk.parseCommit(Constants.EMPTY_BLOB_ID);
+					
+					currentCommit.setAuthor(commit.getAuthorIdent().getName());
+					currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
+					currentCommit.setCommit_id(commit.getId().getName());
+					currentCommit.setComment(commit.getFullMessage());
+					currentCommit.setCommit_date(new Date(commit.getCommitTime() * 1000L));
+					currentCommit.setBranch_id(branch.getObjectId().getName());
+					currentBranchEntry.setBranch_id(branch.getObjectId().getName());
+					currentBranchEntry.setBranch_name(branch.getName());
+					currentBranchEntry.setCommit_id(currentCommit.getCommit_id());
+	
+					ObjectId currentCommitTree = repoFile.resolve(commit.getId().getName() + "^{tree}");
+					ObjectId prevCommitTree = repoFile.resolve(prevCommit.getId().getName() + "^{tree}");
+					CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+					oldTreeIter.reset(reader, prevCommitTree);
+					CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+					newTreeIter.reset(reader, currentCommitTree);
+					List<DiffEntry> diffs = git.diff()
+						.setOutputStream(logger)
+		                .setNewTree(newTreeIter)
+		                .setOldTree(oldTreeIter)
+		                .call();
+					Set<String> changed = new HashSet<String>();
+					System.out.println("Number of changed files: " + diffs.size());
+					for (DiffEntry d : diffs)
+					{
+						if (!d.getNewPath().endsWith(".java"))
+							continue;
+						currentFile = new FilesTO();
+						if (d.getChangeType() != DiffEntry.ChangeType.DELETE) {
+							ObjectLoader objectL = repoFile.open(d.getNewId().toObjectId());
+							objectL.openStream();
+							ByteArrayOutputStream out = new ByteArrayOutputStream(); 
+							objectL.copyTo(out);
+							String raw = out.toString("UTF-8");
+							currentFile.setRaw_file(raw);
+							out.flush();
+						}
+						currentFile.setCommit_id(currentCommit.getCommit_id());				
+						currentFile.setFile_id(d.getNewPath());
+						currentFile.setFile_name(d.getNewPath().substring(
+								d.getNewPath().lastIndexOf(File.separatorChar) != -1 ? 
+										d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
+											0, d.getNewPath().length()));
+						db.InsertFiles(currentFile);
+						changed.add(d.getNewPath());
+					}
+					currentCommit.setChanged_files(changed);
+					
+					TreeWalk structure = new TreeWalk(repoFile);
+					structure.addTree(commit.getTree());
+					structure.setRecursive(true);
+					structure.setFilter(PathSuffixFilter.create(".java"));
+					Set<String> filePaths = new HashSet<String>();
+					while(structure.next())
+					{
+						filePaths.add(structure.getPathString());
+					}
+					currentCommit.setFile_structure(filePaths);
+					db.InsertCommit(currentCommit);
+					db.InsertBranchEntry(currentBranchEntry);
+				}
+				// Need to finish the last commit -- Treat every file in this tree as a changed file.
 				currentCommit = new CommitsTO();
-				if (prevCommit != null) commit = prevCommit;
-				if (i.hasNext()) prevCommit = walk.parseCommit(i.next());
-				else prevCommit = walk.parseCommit(Constants.EMPTY_BLOB_ID);
+				currentBranchEntry = new BranchEntryTO();
+				commit = prevCommit;
+				TreeWalk initialCommit = new TreeWalk(repoFile);
+				initialCommit.addTree(commit.getTree());
+				initialCommit.setRecursive(true);
+				initialCommit.setFilter(PathSuffixFilter.create(".java"));
+
 				currentCommit.setAuthor(commit.getAuthorIdent().getName());
 				currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
 				currentCommit.setCommit_id(commit.getId().getName());
 				currentCommit.setComment(commit.getFullMessage());
 				currentCommit.setCommit_date(new Date(commit.getCommitTime() * 1000L));
-
-				ObjectId currentCommitTree = repoFile.resolve(commit.getId().getName() + "^{tree}");
-				ObjectId prevCommitTree = repoFile.resolve(prevCommit.getId().getName() + "^{tree}");
-				CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
-				oldTreeIter.reset(reader, prevCommitTree);
-				CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
-				newTreeIter.reset(reader, currentCommitTree);
-				List<DiffEntry> diffs = git.diff()
-					.setOutputStream(logger)
-	                .setNewTree(newTreeIter)
-	                .setOldTree(oldTreeIter)
-	                .call();
-				Set<String> changed = new HashSet<String>();
-				System.out.println("Number of changed files: " + diffs.size());
-				for (DiffEntry d : diffs)
+				currentBranchEntry.setBranch_id(branch.getObjectId().getName());
+				currentBranchEntry.setBranch_name(branch.getName());
+				currentBranchEntry.setCommit_id(currentCommit.getCommit_id());
+				
+				Set<String> filenames = new HashSet<String>();
+				while(initialCommit.next())
 				{
-					changed.add(d.getNewPath());
+					currentFile = new FilesTO();
+					ObjectLoader objectL = repoFile.open(initialCommit.getObjectId(0));
+					objectL.openStream();
+					ByteArrayOutputStream out = new ByteArrayOutputStream(); 
+					objectL.copyTo(out);
+					String raw = out.toString("UTF-8");
+					filenames.add(initialCommit.getPathString());
+					currentFile.setCommit_id(currentCommit.getCommit_id());				
+					currentFile.setFile_id(initialCommit.getPathString());
+					currentFile.setRaw_file(raw);
+					currentFile.setFile_name(initialCommit.getNameString());
+					db.InsertFiles(currentFile);
 				}
-				currentCommit.setChanged_files(changed);
+				System.out.println("Number of changed files: " + filenames.size());
+				currentCommit.setChanged_files(filenames);
+				currentCommit.setFile_structure(filenames);
 				db.InsertCommit(currentCommit);
-				// TODO @braden -- INSERT FILES.
+				db.InsertBranchEntry(currentBranchEntry);
 			}
-			// Need to finish the last commit -- Treat every file in this tree as a changed file.
-			currentCommit = new CommitsTO();
-			commit = prevCommit;
-			TreeWalk initialCommit = new TreeWalk(repoFile);
-			initialCommit.addTree(commit.getTree());
-			initialCommit.setRecursive(true);
-
-			currentCommit.setAuthor(commit.getAuthorIdent().getName());
-			currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
-			currentCommit.setCommit_id(commit.getId().getName());
-			currentCommit.setComment(commit.getFullMessage());
-			currentCommit.setCommit_date(new Date(commit.getCommitTime() * 1000L));
-			
-			Set<String> filenames = new HashSet<String>();
-			while(initialCommit.next())
-			{
-				currentFile = new FilesTO();
-				ObjectLoader objectL = repoFile.open(initialCommit.getObjectId(0));
-				objectL.openStream();
-				ByteArrayOutputStream out = new ByteArrayOutputStream(); 
-				objectL.copyTo(out);
-				String raw = out.toString("UTF-8");
-				filenames.add(initialCommit.getPathString());
-				currentFile.setCommit_id(currentCommit.getCommit_id());				
-				currentFile.setFile_id(initialCommit.getPathString());
-				currentFile.setRaw_file(raw);
-				currentFile.setFile_name(initialCommit.getNameString());
-				db.InsertFiles(currentFile);
-				out.flush();
-			}
-			currentCommit.setChanged_files(filenames);
-			db.InsertCommit(currentCommit);
 		}
 		catch(Exception e)
 		{

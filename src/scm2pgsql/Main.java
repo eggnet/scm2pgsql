@@ -10,9 +10,8 @@ public class Main {
 	public static GitParser gitParser = new GitParser();
 	public static void main(String[] args)	
 	{
-		System.out.println("Scm2Pgsql tool developed by eggnet.");
+		System.out.println("Scm2Pgsql tool developed by eggnet at UVic.");
 		try {
-			System.out.println(args.length);
 			if (args.length < 1)
 			{
 				throw new ArrayIndexOutOfBoundsException();

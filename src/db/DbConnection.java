@@ -1,13 +1,11 @@
 package db;
 
 import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.text.FieldPosition;
-
-import db.ScriptRunner;
 
 import scm2pgsql.Resources;
 
@@ -110,6 +108,7 @@ public class DbConnection {
 		try {
 			conn = DriverManager.getConnection(connectionString, Resources.dbUser, Resources.dbPassword);
 			sr = new ScriptRunner(conn, false, true);
+			sr.setLogWriter(null);
 		} 
 		catch (SQLException e) 
 		{
@@ -140,7 +139,7 @@ public class DbConnection {
 			connect(Resources.dbUrl + dbName.toLowerCase());
 			
 			// Now load our default schema in.
-			sr.runScript(new FileReader(this.getClass().getResource("scripts/createdb.sql").getPath()));
+			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("scripts/createdb.sql")));
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -162,25 +161,44 @@ public class DbConnection {
 	
 	public boolean InsertCommit(CommitsTO commit)
 	{
-		// Set up for converting dates to correct format
-		FieldPosition pos = new FieldPosition(0);
-	    StringBuffer empty = new StringBuffer();
-	    StringBuffer commit_date = Resources.DBDateFormat.format(commit.getCommit_date(), empty, pos);
-	    
-		// Build the insertion statement
-		String insert = "INSERT INTO commits (id, commit_id, author, author_email, comments, commit_date," +
-				" changed_files, branch_id) VALUES(" +
-				"default, '" +
-				commit.getCommit_id() + "', '" + 
-				commit.getAuthor() + "', '" + 
-				commit.getAuthor_email() + "', '" + 
-				commit.getComment() + "', '" + 
-				commit.getCommit_date().toString() + "', '" + 
-				commit.getChanged_filesAsString() + "', '111" +  
-				"');";
-		
-		// Run the query
-		return exec(insert);
+	    try {
+		    PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO commits (id, commit_id, author, author_email, comments, commit_date," +
+					" changed_files, file_structure, branch_id) VALUES(" +
+					"default, ?, ?, ?, ?, '" + commit.getCommit_date().toString() + "', ?, ?, ?);");
+			s.setString(1, commit.getCommit_id());
+			s.setString(2, commit.getAuthor());
+			s.setString(3, commit.getAuthor_email());
+			s.setString(4, commit.getComment());
+			s.setArray(5, conn.createArrayOf("varchar", commit.getChanged_files().toArray()));
+			s.setArray(6, conn.createArrayOf("varchar", commit.getFile_structure().toArray()));
+		    s.setString(7, commit.getBranch_id());
+			s.execute();
+	    }
+	    catch (SQLException e)
+	    {
+	    	e.printStackTrace();
+	    	return false;
+	    }
+	    return true;
+	}
+	
+	public boolean InsertBranchEntry(BranchEntryTO branchEntry)
+	{
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO branches (branch_id, branch_name, commit_id)" +
+					" VALUES(?, ?, ?);");
+			s.setString(1, branchEntry.getBranch_id());
+			s.setString(2, branchEntry.getBranch_name());
+			s.setString(3, branchEntry.getCommit_id());
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			return false;
+		}
+		return true;
 	}
 	
 	public boolean InsertFiles(FilesTO files)
