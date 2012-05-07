@@ -170,8 +170,6 @@ public class DbConnection {
 			s.setString(2, commit.getAuthor());
 			s.setString(3, commit.getAuthor_email());
 			s.setString(4, commit.getComment());
-//			s.setArray(5, conn.createArrayOf("varchar", commit.getChanged_files().toArray()));
-//			s.setArray(6, conn.createArrayOf("varchar", commit.getFile_structure().toArray()));
 		    s.setString(5, commit.getBranch_id());
 			s.execute();
 	    }
