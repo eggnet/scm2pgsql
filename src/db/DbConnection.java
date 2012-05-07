@@ -164,15 +164,15 @@ public class DbConnection {
 	    try {
 		    PreparedStatement s = conn.prepareStatement(
 					"INSERT INTO commits (id, commit_id, author, author_email, comments, commit_date," +
-					" changed_files, file_structure, branch_id) VALUES(" +
-					"default, ?, ?, ?, ?, '" + commit.getCommit_date().toString() + "', ?, ?, ?);");
+					"branch_id) VALUES(" +
+					"default, ?, ?, ?, ?, '" + commit.getCommit_date().toString() + "', ?);");
 			s.setString(1, commit.getCommit_id());
 			s.setString(2, commit.getAuthor());
 			s.setString(3, commit.getAuthor_email());
 			s.setString(4, commit.getComment());
-			s.setArray(5, conn.createArrayOf("varchar", commit.getChanged_files().toArray()));
-			s.setArray(6, conn.createArrayOf("varchar", commit.getFile_structure().toArray()));
-		    s.setString(7, commit.getBranch_id());
+//			s.setArray(5, conn.createArrayOf("varchar", commit.getChanged_files().toArray()));
+//			s.setArray(6, conn.createArrayOf("varchar", commit.getFile_structure().toArray()));
+		    s.setString(5, commit.getBranch_id());
 			s.execute();
 	    }
 	    catch (SQLException e)
@@ -192,6 +192,40 @@ public class DbConnection {
 			s.setString(1, branchEntry.getBranch_id());
 			s.setString(2, branchEntry.getBranch_name());
 			s.setString(3, branchEntry.getCommit_id());
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			return false;
+		}
+		return true;
+	}
+	
+	public boolean InsertChangeEntry(String commitId, String fileId)
+	{
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO changes (commit_id, file_id)" +
+					" VALUES(?, ?);");
+			s.setString(1, commitId);
+			s.setString(2, fileId);
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			return false;
+		}
+		return true;
+	}
+	
+	public boolean InsertFileTreeEntry(String commitId, String fileId)
+	{
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO source_trees (commit_id, file_id)" +
+					" VALUES(?, ?);");
+			s.setString(1, commitId);
+			s.setString(2, fileId);
 			s.execute();
 		}
 		catch (SQLException e)

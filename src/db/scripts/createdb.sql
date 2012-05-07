@@ -46,8 +46,8 @@ CREATE TABLE commits (
     author_email character varying(255),
     comments text,
     commit_date timestamp with time zone,
-    changed_files text[],
-    file_structure text[],
+    -- changed_files character varying(255)[],
+    -- file_structure character varying(255)[],
     branch_id character varying(255)
 );
 
@@ -144,6 +144,15 @@ CREATE TABLE branches (
     commit_id character varying(255)
 );
 
+CREATE TABLE changes (
+	commit_id character varying (255),
+	file_id character varying (255)
+);
+
+CREATE TABLE source_trees (
+	commit_id character varying(255),
+	file_id character varying(255)
+);
 --
 -- PostgreSQL database dump complete
 --

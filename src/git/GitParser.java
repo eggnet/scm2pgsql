@@ -114,7 +114,6 @@ public class GitParser {
 		                .setNewTree(newTreeIter)
 		                .setOldTree(oldTreeIter)
 		                .call();
-					Set<String> changed = new HashSet<String>();
 					System.out.println("Number of changed files: " + diffs.size());
 					for (DiffEntry d : diffs)
 					{
@@ -137,9 +136,9 @@ public class GitParser {
 										d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
 											0, d.getNewPath().length()));
 						db.InsertFiles(currentFile);
-						changed.add(d.getNewPath());
+						db.InsertChangeEntry(currentCommit.getCommit_id(), d.getNewPath());
 					}
-					currentCommit.setChanged_files(changed);
+//					currentCommit.setChanged_files(changed);
 					
 					TreeWalk structure = new TreeWalk(repoFile);
 					structure.addTree(commit.getTree());
@@ -148,9 +147,10 @@ public class GitParser {
 					Set<String> filePaths = new HashSet<String>();
 					while(structure.next())
 					{
-						filePaths.add(structure.getPathString());
+						db.InsertFileTreeEntry(currentCommit.getCommit_id(), structure.getPathString());
 					}
-					currentCommit.setFile_structure(filePaths);
+					
+//					currentCommit.setFile_structure(filePaths);
 					db.InsertCommit(currentCommit);
 					db.InsertBranchEntry(currentBranchEntry);
 				}
@@ -189,8 +189,14 @@ public class GitParser {
 					db.InsertFiles(currentFile);
 				}
 				System.out.println("Number of changed files: " + filenames.size());
-				currentCommit.setChanged_files(filenames);
-				currentCommit.setFile_structure(filenames);
+//				currentCommit.setChanged_files(filenames);
+//				currentCommit.setFile_structure(filenames);
+				for (String f: filenames)
+				{
+					db.InsertChangeEntry(currentCommit.getCommit_id(), f);
+					db.InsertFileTreeEntry(currentCommit.getCommit_id(), f);
+				}
+				
 				db.InsertCommit(currentCommit);
 				db.InsertBranchEntry(currentBranchEntry);
 			}
