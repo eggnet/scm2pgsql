@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import scm2pgsql.Resources;
 
@@ -13,6 +14,7 @@ public class DbConnection {
 	public static Connection conn = null;
 	public static DbConnection ref = null;
 	public static ScriptRunner sr;
+	public static Statement currentBatch;
 	private DbConnection() 
 	{
 		try 
@@ -109,6 +111,7 @@ public class DbConnection {
 			conn = DriverManager.getConnection(connectionString, Resources.dbUser, Resources.dbPassword);
 			sr = new ScriptRunner(conn, false, true);
 			sr.setLogWriter(null);
+			currentBatch = conn.createStatement();
 		} 
 		catch (SQLException e) 
 		{
@@ -207,13 +210,13 @@ public class DbConnection {
 					" VALUES(?, ?);");
 			s.setString(1, commitId);
 			s.setString(2, fileId);
-			s.execute();
+			currentBatch.addBatch(s.toString());
+			return true;
 		}
 		catch (SQLException e)
 		{
 			return false;
 		}
-		return true;
 	}
 	
 	public boolean InsertFileTreeEntry(String commitId, String fileId)
@@ -221,16 +224,30 @@ public class DbConnection {
 		try { 
 			PreparedStatement s = conn.prepareStatement(
 					"INSERT INTO source_trees (commit_id, file_id)" +
-					" VALUES(?, ?);");
+					" VALUES(?, ?)");
 			s.setString(1, commitId);
 			s.setString(2, fileId);
-			s.execute();
+			currentBatch.addBatch(s.toString());
+			return true;
 		}
 		catch (SQLException e)
 		{
+			e.printStackTrace();
 			return false;
 		}
-		return true;
+	}
+	
+	public boolean execBatch() {
+		try {
+			currentBatch.executeBatch();
+			currentBatch.clearBatch();
+			return true;
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+			return false;
+		}
 	}
 	
 	public boolean InsertFiles(FilesTO files)

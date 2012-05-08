@@ -50,7 +50,6 @@ public class GitParser {
 		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
 		db.connect(Resources.dbUrl);
 		db.createDB(repoName);
-		
 		// open up our error log.
 		File log = new File("err.log");
 		log.createNewFile();
@@ -138,19 +137,18 @@ public class GitParser {
 						db.InsertFiles(currentFile);
 						db.InsertChangeEntry(currentCommit.getCommit_id(), d.getNewPath());
 					}
-//					currentCommit.setChanged_files(changed);
+					db.execBatch();
 					
 					TreeWalk structure = new TreeWalk(repoFile);
 					structure.addTree(commit.getTree());
 					structure.setRecursive(true);
 					structure.setFilter(PathSuffixFilter.create(".java"));
-					Set<String> filePaths = new HashSet<String>();
 					while(structure.next())
 					{
 						db.InsertFileTreeEntry(currentCommit.getCommit_id(), structure.getPathString());
+						
 					}
-					
-//					currentCommit.setFile_structure(filePaths);
+					db.execBatch();
 					db.InsertCommit(currentCommit);
 					db.InsertBranchEntry(currentBranchEntry);
 				}
@@ -189,14 +187,12 @@ public class GitParser {
 					db.InsertFiles(currentFile);
 				}
 				System.out.println("Number of changed files: " + filenames.size());
-//				currentCommit.setChanged_files(filenames);
-//				currentCommit.setFile_structure(filenames);
 				for (String f: filenames)
 				{
 					db.InsertChangeEntry(currentCommit.getCommit_id(), f);
 					db.InsertFileTreeEntry(currentCommit.getCommit_id(), f);
 				}
-				
+				db.execBatch();
 				db.InsertCommit(currentCommit);
 				db.InsertBranchEntry(currentBranchEntry);
 			}
