@@ -134,10 +134,6 @@ REVOKE ALL ON SCHEMA public FROM postgres;
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
---
--- Name: branches; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
---
-
 CREATE TABLE branches (
     branch_id character varying (255),
     branch_name character varying(100),
@@ -153,7 +149,11 @@ CREATE TABLE source_trees (
 	commit_id character varying(255),
 	file_id character varying(255)
 );
---
--- PostgreSQL database dump complete
---
 
+CREATE TABLE owner (
+	commit_id character varying(255) NOT NULL,
+	owner_id character varying(255) NOT NULL,
+	file_id character varying(255) NOT NULL,
+	char_start integer NOT NULL,
+	char_end integer NOT NULL
+);

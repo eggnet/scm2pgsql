@@ -24,7 +24,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 
 import scm2pgsql.Resources;
 import db.BranchEntryTO;
@@ -116,8 +115,8 @@ public class GitParser {
 					System.out.println("Number of changed files: " + diffs.size());
 					for (DiffEntry d : diffs)
 					{
-						if (!d.getNewPath().endsWith(".java"))
-							continue;
+//						if (!d.getNewPath().endsWith(".java"))
+//							continue;
 						currentFile = new FilesTO();
 						if (d.getChangeType() != DiffEntry.ChangeType.DELETE) {
 							ObjectLoader objectL = repoFile.open(d.getNewId().toObjectId());
@@ -142,7 +141,7 @@ public class GitParser {
 					TreeWalk structure = new TreeWalk(repoFile);
 					structure.addTree(commit.getTree());
 					structure.setRecursive(true);
-					structure.setFilter(PathSuffixFilter.create(".java"));
+//					structure.setFilter(PathSuffixFilter.create(".java"));
 					while(structure.next())
 					{
 						db.InsertFileTreeEntry(currentCommit.getCommit_id(), structure.getPathString());
@@ -159,7 +158,7 @@ public class GitParser {
 				TreeWalk initialCommit = new TreeWalk(repoFile);
 				initialCommit.addTree(commit.getTree());
 				initialCommit.setRecursive(true);
-				initialCommit.setFilter(PathSuffixFilter.create(".java"));
+//				initialCommit.setFilter(PathSuffixFilter.create(".java"));
 
 				currentCommit.setAuthor(commit.getAuthorIdent().getName());
 				currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
@@ -202,7 +201,7 @@ public class GitParser {
 			e.printStackTrace();
 		}
 		db.close();
-	}	
+	}
 }
 
 
