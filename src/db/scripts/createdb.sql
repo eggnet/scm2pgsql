@@ -150,7 +150,7 @@ CREATE TABLE source_trees (
 	file_id character varying(255)
 );
 
-CREATE TABLE owner (
+CREATE TABLE owners (
 	commit_id character varying(255) NOT NULL,
 	owner_id character varying(255) NOT NULL,
 	file_id character varying(255) NOT NULL,
