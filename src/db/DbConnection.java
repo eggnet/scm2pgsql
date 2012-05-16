@@ -8,6 +8,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.eclipse.jgit.diff.DiffEntry;
+
 import scm2pgsql.Resources;
 
 public class DbConnection {
@@ -202,19 +204,21 @@ public class DbConnection {
 		return true;
 	}
 	
-	public boolean InsertChangeEntry(String commitId, String fileId)
+	public boolean InsertChangeEntry(String commitId, String fileId, DiffEntry.ChangeType type)
 	{
 		try { 
 			PreparedStatement s = conn.prepareStatement(
-					"INSERT INTO changes (commit_id, file_id)" +
-					" VALUES(?, ?);");
+					"INSERT INTO changes (commit_id, file_id, change_type)" +
+					" VALUES(?, ?, ?);");
 			s.setString(1, commitId);
 			s.setString(2, fileId);
+			s.setString(3, type.toString());
 			currentBatch.addBatch(s.toString());
 			return true;
 		}
 		catch (SQLException e)
 		{
+			e.printStackTrace();
 			return false;
 		}
 	}

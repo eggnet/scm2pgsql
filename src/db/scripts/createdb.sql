@@ -142,7 +142,8 @@ CREATE TABLE branches (
 
 CREATE TABLE changes (
 	commit_id character varying (255),
-	file_id character varying (255)
+	file_id character varying (255),
+	change_type character varying(10)
 );
 
 CREATE TABLE source_trees (

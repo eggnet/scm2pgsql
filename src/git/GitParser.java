@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffEntry.ChangeType;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -128,13 +129,16 @@ public class GitParser {
 							out.flush();
 						}
 						currentFile.setCommit_id(currentCommit.getCommit_id());				
-						currentFile.setFile_id(d.getNewPath());
+						if (d.getChangeType() == DiffEntry.ChangeType.DELETE)
+							currentFile.setFile_id(d.getOldPath());
+						else 
+							currentFile.setFile_id(d.getNewPath());
 						currentFile.setFile_name(d.getNewPath().substring(
 								d.getNewPath().lastIndexOf(File.separatorChar) != -1 ? 
 										d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
 											0, d.getNewPath().length()));
 						db.InsertFiles(currentFile);
-						db.InsertChangeEntry(currentCommit.getCommit_id(), d.getNewPath());
+						db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
 					}
 					db.execBatch();
 					
@@ -145,7 +149,6 @@ public class GitParser {
 					while(structure.next())
 					{
 						db.InsertFileTreeEntry(currentCommit.getCommit_id(), structure.getPathString());
-						
 					}
 					db.execBatch();
 					db.InsertCommit(currentCommit);
@@ -188,7 +191,7 @@ public class GitParser {
 				System.out.println("Number of changed files: " + filenames.size());
 				for (String f: filenames)
 				{
-					db.InsertChangeEntry(currentCommit.getCommit_id(), f);
+					db.InsertChangeEntry(currentCommit.getCommit_id(), f, ChangeType.ADD);
 					db.InsertFileTreeEntry(currentCommit.getCommit_id(), f);
 				}
 				db.execBatch();
