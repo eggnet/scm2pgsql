@@ -20,6 +20,7 @@ public class Main {
 			{
 				try 
 				{
+					if (args.length == 2) Resources.JAVA_ONLY = Boolean.parseBoolean(args[1]);
 					gitParser.parseRepo(args[0]);
 				} 
 				catch (MissingObjectException e) 

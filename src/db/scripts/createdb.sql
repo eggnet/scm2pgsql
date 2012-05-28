@@ -159,4 +159,39 @@ CREATE TABLE IF NOT EXISTS file_diffs (
 	char_end integer NOT NULL,
 	diff_type character varying (10)
 );
-ALTER TABLE public.files OWNER TO postgres;
+ALTER TABLE public.file_diffs OWNER TO postgres;
+
+CREATE TABLE networks (
+	new_commit_id varchar(255),
+	old_commit_id varchar(255),
+	network_id integer NOT NULL PRIMARY KEY
+);
+
+CREATE SEQUENCE networks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.networks_id_seq OWNER TO postgres;
+
+ALTER SEQUENCE networks_id_seq OWNED BY networks.network_id;
+
+ALTER TABLE ONLY networks ALTER COLUMN network_id SET DEFAULT nextval('networks_id_seq'::regclass);
+
+CREATE TABLE nodes (
+	id varchar(255),
+	label varchar(255),
+	network_id integer references networks(network_id),
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE edges (
+	source varchar(255),
+	target varchar(255),
+	weight real,
+	network_id integer references networks(network_id)
+);
+
