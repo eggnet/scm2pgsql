@@ -277,14 +277,15 @@ public class DbConnection {
 	{
 		try { 
 			PreparedStatement s = conn.prepareStatement(
-					"INSERT INTO file_diffs (file_id, commit_id, diff_text, char_start, char_end, diff_type)" +
-					" VALUES(?, ?, ?, ?, ?, ?);");
+					"INSERT INTO file_diffs (file_id, new_commit_id, old_commit_id, diff_text, char_start, char_end, diff_type)" +
+					" VALUES(?, ?, ?, ?, ?, ?, ?);");
 			s.setString(1, diff.getFile_id());
-			s.setString(2, diff.getCommit_id());
-			s.setString(3, diff.getDiff_text());
-			s.setInt(4, diff.getChar_start());
-			s.setInt(5, diff.getChar_end());
-			s.setString(6, diff.getDiff_type());
+			s.setString(2, diff.getNewCommit_id());
+			s.setString(3, diff.getOldCommit_id());
+			s.setString(4, diff.getDiff_text());
+			s.setInt(5, diff.getChar_start());
+			s.setInt(6, diff.getChar_end());
+			s.setString(7, diff.getDiff_type());
 			s.execute();
 		}
 		catch (SQLException e)

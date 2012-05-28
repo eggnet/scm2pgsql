@@ -152,8 +152,9 @@ CREATE TABLE source_trees (
 );
 
 CREATE TABLE IF NOT EXISTS file_diffs (
-	commit_id character varying(255) NOT NULL,
 	file_id character varying(255) NOT NULL,
+	new_commit_id character varying(255) NOT NULL,
+	old_commit_id character varying(255) NOT NULL,
 	diff_text text,
 	char_start integer NOT NULL,
 	char_end integer NOT NULL,
