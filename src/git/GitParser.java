@@ -12,9 +12,13 @@ import java.util.Set;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.blame.BlameResult;
+import org.eclipse.jgit.diff.DiffAlgorithm;
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffAlgorithm.SupportedAlgorithm;
 import org.eclipse.jgit.diff.DiffEntry.ChangeType;
 import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.lib.AnyObjectId;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
@@ -23,6 +27,7 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -40,6 +45,7 @@ public class GitParser {
 	public DbConnection db = DbConnection.getInstance();
 	public Git git;
 	public PrintStream logger;
+	public static ObjectId ROOT_COMMIT_ID;
 	
 	private void initialize(String gitDir) throws IOException
 	{
@@ -52,41 +58,47 @@ public class GitParser {
 		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
 		db.connect(Resources.dbUrl);
 		db.createDB(repoName);
-		// open up our error log.
 		File log = new File("err.log");
 		log.createNewFile();
 		logger = new PrintStream(log);
 	}
 	
-	public void parseRepo2(String gitDir) throws MissingObjectException, IOException
+	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{
 		initialize(gitDir);
-
 		// Setup branches 
 		List<Ref> branches = git.branchList().call();
 		for (Ref branch : branches)
 		{		
 			try
 			{
+				// Checkout the branch and setup variables.
 				git.checkout().setName(branch.getName()).call();
 				System.out.println(repoFile.getFullBranch());
 				RevWalk walk = new RevWalk(repoFile);
+				AnyObjectId root = repoFile.resolve(Constants.HEAD);
+				walk.sort(RevSort.REVERSE);
+				walk.markStart(walk.parseCommit(root));
 				RevCommit current, previous = null;
-				Iterable<RevCommit> logs = git.log().call();
-				Iterator<RevCommit> i = logs.iterator();
-				
+				Iterator<RevCommit> i = walk.iterator();
+
 				// Safety
 				if (!i.hasNext())
 					return;
 				
+				// Walk our commits.
 				current = walk.parseCommit(i.next());
+				
+				// Set the first commit Id while we are here
+				ROOT_COMMIT_ID = current.getId();
+				
+				parseFirstCommit(current, branch);
 				while(i.hasNext())
 				{
 					previous = current;
 					current = walk.parseCommit(i.next());
 					parseCommit(current, previous, branch);
 				}
-				parseLastCommit(previous, branch);
 			}
 			catch (Exception e)
 			{
@@ -96,7 +108,16 @@ public class GitParser {
 		}
 	}
 	
-	public void parseLastCommit(RevCommit commit, Ref branch) throws GitAPIException, IOException
+	/**
+	 * Parses the final commit in the walk.  This is different because
+	 * there is no longer a notion of 'diffing', just adding all files 
+	 * as changed.
+	 * @param commit
+	 * @param branch
+	 * @throws GitAPIException
+	 * @throws IOException
+	 */
+	public void parseFirstCommit(RevCommit commit, Ref branch) throws GitAPIException, IOException
 	{
 		// Need to finish the last commit -- Treat every file in this tree as a changed file.
 		CommitsTO currentCommit = new CommitsTO();
@@ -109,6 +130,7 @@ public class GitParser {
 		if (Resources.JAVA_ONLY)
 			initialCommit.setFilter(PathSuffixFilter.create(".java"));
 
+		// Setup for transfer objects
 		currentCommit.setAuthor(commit.getAuthorIdent().getName());
 		currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
 		currentCommit.setCommit_id(commit.getId().getName());
@@ -118,6 +140,7 @@ public class GitParser {
 		currentBranchEntry.setBranch_name(branch.getName());
 		currentBranchEntry.setCommit_id(currentCommit.getCommit_id());
 		
+		// Add all the raw files in the tree
 		Set<String> filenames = new HashSet<String>();
 		while(initialCommit.next())
 		{
@@ -145,23 +168,36 @@ public class GitParser {
 		db.InsertBranchEntry(currentBranchEntry);
 	}
 	
-	public void parseCommit(RevCommit commit, RevCommit previousCommit, Ref branch) throws GitAPIException, IOException
+	/**
+	 * Parses a given commit into the database.  First diffs the commit with the previous, and inserts records, 
+	 * then it adds ownership to the files using git-blame.
+	 * @param currentCommit
+	 * @param nextCommit
+	 * @param branch
+	 * @throws GitAPIException
+	 * @throws IOException
+	 */
+	public void parseCommit(RevCommit currentCommit, RevCommit prevCommit, Ref branch) throws GitAPIException, IOException
 	{
+		// initialize transfer objects
 		CommitsTO currentCommitTO = new CommitsTO();
 		BranchEntryTO currentBranchEntry = new BranchEntryTO();
 		ObjectReader reader = repoFile.newObjectReader();
-		currentCommitTO.setAuthor(commit.getAuthorIdent().getName());
-		currentCommitTO.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
-		currentCommitTO.setCommit_id(commit.getId().getName());
-		currentCommitTO.setComment(commit.getFullMessage());
-		currentCommitTO.setCommit_date(new Date(commit.getCommitTime() * 1000L));
+
+		// setup values for transfer objects
+		currentCommitTO.setAuthor(currentCommit.getAuthorIdent().getName());
+		currentCommitTO.setAuthor_email(currentCommit.getAuthorIdent().getEmailAddress());
+		currentCommitTO.setCommit_id(currentCommit.getId().getName());
+		currentCommitTO.setComment(currentCommit.getFullMessage());
+		currentCommitTO.setCommit_date(new Date(currentCommit.getCommitTime() * 1000L));
 		currentCommitTO.setBranch_id(branch.getObjectId().getName());
 		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
 		currentBranchEntry.setBranch_name(branch.getName());
 		currentBranchEntry.setCommit_id(currentCommitTO.getCommit_id());
 
-		ObjectId currentCommitTree = repoFile.resolve(commit.getId().getName() + "^{tree}");
-		ObjectId prevCommitTree = repoFile.resolve(previousCommit.getId().getName() + "^{tree}");
+		// Diff the commits and parse the files.
+		ObjectId currentCommitTree = repoFile.resolve(currentCommit.getId().getName() + "^{tree}");
+		ObjectId prevCommitTree = repoFile.resolve(prevCommit.getId().getName() + "^{tree}");
 		CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
 		oldTreeIter.reset(reader, prevCommitTree);
 		CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
@@ -178,8 +214,9 @@ public class GitParser {
 		db.execBatch();
 		
 		TreeWalk structure = new TreeWalk(repoFile);
-		structure.addTree(commit.getTree());
+		structure.addTree(currentCommit.getTree());
 		structure.setRecursive(true);
+		
 		if (Resources.JAVA_ONLY)
 			structure.setFilter(PathSuffixFilter.create(".java"));
 		
@@ -219,7 +256,19 @@ public class GitParser {
 								0, d.getNewPath().length()));
 			db.InsertFiles(currentFile);
 			db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
+			updateOwnership(currentCommit, currentFile);
 		}
+	}
+
+	/**
+	 * Updates the ownership of a file with a range and inserts into the database.
+	 * @param currentCommit
+	 * @param currentFile
+	 */
+	public void updateOwnership(CommitsTO currentCommit, FilesTO currentFile)
+	{
+//		BlameResult blameRes = git.blame().setDiffAlgorithm(DiffAlgorithm.getAlgorithm(SupportedAlgorithm.MYERS)).setFilePath(currentFile.getFile_id()).setStartCommit(ROOT_COMMIT_ID).call();
+//		System.out.println(blameRes.getResultContents().toString());
 	}
 }
 
