@@ -31,6 +31,7 @@ import db.BranchEntryTO;
 import db.CommitsTO;
 import db.DbConnection;
 import db.FilesTO;
+import db.FileDiffsTO;
 
 public class GitParser {
 	public File repoDir;

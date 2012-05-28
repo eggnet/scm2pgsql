@@ -272,4 +272,25 @@ public class DbConnection {
 		}
 		return true;
 	}
+	
+	public boolean InsertFileDiff(FileDiffsTO diff)
+	{
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO file_diffs (file_id, commit_id, diff_text, char_start, char_end, diff_type)" +
+					" VALUES(?, ?, ?, ?, ?, ?);");
+			s.setString(1, diff.getFile_id());
+			s.setString(2, diff.getCommit_id());
+			s.setString(3, diff.getDiff_text());
+			s.setInt(4, diff.getChar_start());
+			s.setInt(5, diff.getChar_end());
+			s.setString(6, diff.getDiff_type());
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			return false;
+		}
+		return true;
+	}
 }
