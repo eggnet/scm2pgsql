@@ -164,7 +164,7 @@ public class DbConnection {
 							"dummy integer;" + 
 						" BEGIN " +
 							" LOOP " +
-								" select owners.line_start into dummy from owners where commit_id=c_id and owner_=a_id and file_id=f_id and line_start=l_start and line_end=l_end;" +
+								" select owners.line_start into dummy from owners where commit_id=c_id and owner_id=a_id and file_id=f_id and line_start=l_start and line_end=l_end;" +
 								" IF found THEN " +
 									" RETURN ;" +
 								" END IF;" +
@@ -324,19 +324,38 @@ public class DbConnection {
 	{
 		try
 		{
-//			CallableStatement s = conn.prepareCall("{"+
-//					"INSERT INTO owners values (?,?,?,'" + rec.getLineStart() + "','" + rec.getLineEnd() + "')");
 			callableBatch.setString(1, rec.getCommitId());
 			callableBatch.setString(2, rec.getAuthorId());
 			callableBatch.setString(3, rec.getFileId());
 			callableBatch.setInt(4, rec.getLineStart());
 			callableBatch.setInt(5, rec.getLineEnd());
 			callableBatch.addBatch();
-			//			currentBatch.addBatch(s.toString());
 		}
 		catch(SQLException e)
 		{
 			e.printStackTrace();
 		}
 	}
-}	
+	
+	public boolean InsertFileDiff(FileDiffsTO diff)
+	{
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO file_diffs (file_id, new_commit_id, old_commit_id, diff_text, char_start, char_end, diff_type)" +
+					" VALUES(?, ?, ?, ?, ?, ?, ?);");
+			s.setString(1, diff.getFile_id());
+			s.setString(2, diff.getNewCommit_id());
+			s.setString(3, diff.getOldCommit_id());
+			s.setString(4, diff.getDiff_text());
+			s.setInt(5, diff.getChar_start());
+			s.setInt(6, diff.getChar_end());
+			s.setString(7, diff.getDiff_type());
+			s.execute();
+		}
+		catch (SQLException e)
+		{
+			return false;
+		}
+		return true;
+	}
+}

@@ -151,6 +151,17 @@ CREATE TABLE source_trees (
 	file_id character varying(255)
 );
 
+CREATE TABLE IF NOT EXISTS file_diffs (
+	file_id character varying(255) NOT NULL,
+	new_commit_id character varying(255) NOT NULL,
+	old_commit_id character varying(255) NOT NULL,
+	diff_text text,
+	char_start integer NOT NULL,
+	char_end integer NOT NULL,
+	diff_type character varying (10)
+);
+ALTER TABLE public.file_diffs OWNER TO postgres;
+
 CREATE TABLE networks (
 	new_commit_id varchar(255),
 	old_commit_id varchar(255),

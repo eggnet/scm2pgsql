@@ -38,6 +38,10 @@ import db.BranchEntryTO;
 import db.CommitsTO;
 import db.DbConnection;
 import db.FilesTO;
+import db.FileDiffsTO;
+import differ.diff_match_patch.Diff;
+import differ.diff_match_patch;
+import differ.filediffer;
 
 /**
  * Parses a git repo and adds the information to a PostgreSQL database.
@@ -278,6 +282,24 @@ public class GitParser {
 			db.InsertFiles(currentFile);
 			db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
 			updateOwnership(currentCommit, currentFile, d.getChangeType());
+		}
+	}
+	
+	/*
+	 * Diff two version of the file and store the diff into file_diffs table
+	 */
+	public void parseFileDiffByDiffer(String currentCommit, String prevCommit, String oldRawFile, String newRawFile, FilesTO file) throws MissingObjectException, IOException 
+	{
+		// Get Differ to diff two raw files
+		filediffer differ = new filediffer(oldRawFile, newRawFile);
+		differ.diffFilesLineMode();
+		
+		// Get list of diff objects
+		for (Diff d : differ.getDiffObjects())
+		{
+//			if(d.operation == diff_match_patch.Diff.operation.)
+//				FileDiffsTO filediff = new FileDiffsTO(file.getFile_id(), currentCommit, prevCommit, d.text, 0, 0, d.operation.toString());
+//			db.InsertFileDiff(filediff);
 		}
 	}
 
