@@ -153,10 +153,10 @@ public class DbConnection {
 			// Now load our default schema in.
 			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("scripts/createdb.sql")));
 			
-			//--------------------------------------------------------------------------------------//
-			// Stored procedure for upserting														//
-			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql		//	
-			//--------------------------------------------------------------------------------------//
+			//--------------------------------------------------------------------------------------
+			// Stored procedure for upserting														
+			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			
+			//--------------------------------------------------------------------------------------
 			s = conn.prepareStatement(
 					"CREATE FUNCTION upsert_owner_rec(c_id varchar(255), a_id varchar(255), f_id varchar(255), l_start INT, l_end INT) RETURNS VOID AS" +
 						"'" +
