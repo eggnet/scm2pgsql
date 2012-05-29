@@ -285,7 +285,7 @@ public class GitParser {
 		}
 	}
 	
-	/*
+	/**
 	 * Diff two version of the file and store the diff into file_diffs table
 	 */
 	public void parseFileDiffByDiffer(String currentCommit, String prevCommit, String oldRawFile, String newRawFile, FilesTO file) throws MissingObjectException, IOException 
