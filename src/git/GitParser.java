@@ -323,6 +323,7 @@ public class GitParser {
 			rec.setFileId(currentFile.getFile_id());
 			rec.setLineEnd(-1);
 			rec.setLineStart(-1);
+			rec.setType(Resources.ChangeType.valueOf(change.toString()));
 			db.insertOwnerRecord(rec);
 			return;
 		}
@@ -350,6 +351,7 @@ public class GitParser {
 			{
 				// finish off the last record
 				rec.setLineEnd(i);
+				rec.setType(Resources.ChangeType.valueOf(change.toString()));
 				db.insertOwnerRecord(rec);
 				
 				// we have a new owner
@@ -364,6 +366,7 @@ public class GitParser {
 		}
 		if (rec != null)
 		{
+			rec.setType(Resources.ChangeType.valueOf(change.toString()));
 			db.insertOwnerRecord(rec);
 		}
 		db.execCallableBatch();
