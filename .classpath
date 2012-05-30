@@ -6,6 +6,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/org.eclipse.jgit-1.3.0.201202151440-r.jar"/>
 	<classpathentry kind="lib" path="lib/postgresql-9.1-902.jdbc4.jar"/>
-	<classpathentry kind="lib" path="/callgraphanalyzer/bin/differ.jar"/>
+	<classpathentry kind="lib" path="/callgraphanalyzer/libs/differ.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

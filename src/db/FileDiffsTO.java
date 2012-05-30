@@ -7,10 +7,19 @@ public class FileDiffsTO {
 	private String diff_text;
 	private int char_start;
 	private int char_end;
-	private String diff_type;
+	private diff_types diff_type;
+
+	public enum diff_types{
+		DIFF_DELETE,
+		DIFF_ADD,
+		DIFF_MODIFYINSERT,
+		DIFF_MODIFYDELETE,
+		DIFF_EQUAL,
+		DIFF_UNKNOWN
+	}
 	
 	public FileDiffsTO() { }
-	public FileDiffsTO(String file_id, String new_commit_id, String old_commit_id, String diff_text, int chart_start, int char_end, String diff_type) {
+	public FileDiffsTO(String file_id, String new_commit_id, String old_commit_id, String diff_text, int chart_start, int char_end, diff_types diff_type) {
 		super();
 		this.file_id = file_id;
 		this.new_commit_id = new_commit_id;
@@ -56,13 +65,26 @@ public class FileDiffsTO {
 	public void setChar_end(int char_end) {
 		this.char_end = char_end;
 	}
-	public String getDiff_type() {
+	public diff_types getDiff_type() {
 		return diff_type;
 	}
-	public void setDiff_type(String diff_type) {
+	public void setDiff_type(diff_types diff_type) {
 		this.diff_type = diff_type;
 	}
-	
+	public String getDiff_typeToString(){
+		if(this.diff_type == diff_types.DIFF_ADD)
+			return "DIFF_ADD";
+		else if(this.diff_type == diff_types.DIFF_DELETE)
+			return "DIFF_DELETE";
+		else if(this.diff_type == diff_types.DIFF_MODIFYDELETE)
+			return "DIFF_MODIFYDELETE";
+		else if(this.diff_type == diff_types.DIFF_MODIFYINSERT)
+			return "DIFF_MODIFYINSERT";
+		else if(this.diff_type == diff_types.DIFF_EQUAL)
+			return "DIFF_EQUAL";
+		
+		return "DIFF_UNKNOWN";
+	}
 	
 	
 }

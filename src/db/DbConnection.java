@@ -285,7 +285,7 @@ public class DbConnection {
 			s.setString(4, diff.getDiff_text());
 			s.setInt(5, diff.getChar_start());
 			s.setInt(6, diff.getChar_end());
-			s.setString(7, diff.getDiff_type());
+			s.setString(7, diff.getDiff_typeToString());
 			s.execute();
 		}
 		catch (SQLException e)
