@@ -358,6 +358,7 @@ public class GitParser {
 			rec = new BlameResultRecord();
 			rec.setAuthorId(currentCommit.getAuthor_email());
 			rec.setCommitId(currentCommit.getCommit_id());
+			rec.setSourceCommitId(currentCommit.getCommit_id());
 			rec.setFileId(currentFile.getFile_id());
 			rec.setLineEnd(-1);
 			rec.setLineStart(-1);
@@ -365,6 +366,9 @@ public class GitParser {
 			db.insertOwnerRecord(rec);
 			return;
 		}
+		
+		// TODO @braden finish with character numbers and source_c_id
+		
 		
 		// Construct the blame command
 		BlameGenerator bg = new BlameGenerator(repoFile, currentFile.getFile_id());
@@ -381,6 +385,7 @@ public class GitParser {
 			{
 				rec = new BlameResultRecord();
 				rec.setAuthorId(sourceAuthor.getEmailAddress());
+				rec.setSourceCommitId(blameRes.getSourceCommit(i).getName());
 				rec.setFileId(currentFile.getFile_id());
 				rec.setCommitId(currentCommit.getCommit_id());
 				rec.setLineStart(i+1);
@@ -395,6 +400,7 @@ public class GitParser {
 				// we have a new owner
 				rec = new BlameResultRecord();
 				rec.setAuthorId(sourceAuthor.getEmailAddress());
+				rec.setSourceCommitId(blameRes.getSourceCommit(i).getName());
 				rec.setFileId(currentFile.getFile_id());
 				rec.setCommitId(currentCommit.getCommit_id());
 				rec.setLineStart(i+1);

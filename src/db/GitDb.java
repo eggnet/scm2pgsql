@@ -15,7 +15,7 @@ public class GitDb extends DbConnection
 		super.connect(dbName);
 		try {
 			// initialize the CallableStatement for the owners table
-			callableBatch = conn.prepareCall("{call upsert_owner_rec(?,?,?,?,?,?) } ");
+			callableBatch = conn.prepareCall("{call upsert_owner_rec(?,?,?,?,?,?,?) } ");
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
@@ -162,11 +162,12 @@ public class GitDb extends DbConnection
 		try
 		{
 			callableBatch.setString(1, rec.getCommitId());
-			callableBatch.setString(2, rec.getAuthorId());
-			callableBatch.setString(3, rec.getFileId());
-			callableBatch.setInt(4, rec.getLineStart());
-			callableBatch.setInt(5, rec.getLineEnd());
-			callableBatch.setString(6, rec.getType().toString());
+			callableBatch.setString(2, rec.getSourceCommitId());
+			callableBatch.setString(3, rec.getAuthorId());
+			callableBatch.setString(4, rec.getFileId());
+			callableBatch.setInt(5, rec.getLineStart());
+			callableBatch.setInt(6, rec.getLineEnd());
+			callableBatch.setString(7, rec.getType().toString());
 			callableBatch.addBatch();
 		}
 		catch(SQLException e)
@@ -203,18 +204,18 @@ public class GitDb extends DbConnection
 			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			
 			//--------------------------------------------------------------------------------------
 			s = conn.prepareStatement(
-					"CREATE FUNCTION upsert_owner_rec(c_id varchar(255), a_id varchar(255), f_id varchar(255), l_start INT, l_end INT, c_type varchar(12)) RETURNS VOID AS" +
+					"CREATE FUNCTION upsert_owner_rec(c_id varchar(255), s_c_id varchar(255), a_id varchar(255), f_id varchar(255), c_start INT, c_end INT, c_type varchar(12)) RETURNS VOID AS" +
 						"'" +
 						" DECLARE " + 
 							"dummy integer;" + 
 						" BEGIN " +
 							" LOOP " +
-								" select owners.line_start into dummy from owners where commit_id=c_id and owner_id=a_id and file_id=f_id and line_start=l_start and line_end=l_end and change_type=c_type;" +
+								" select owners.char_start into dummy from owners where commit_id=c_id and source_commit_id=s_c_id and owner_id=a_id and file_id=f_id and char_start=c_start and char_end=c_end and change_type=c_type;" +
 								" IF found THEN " +
 									" RETURN ;" +
 								" END IF;" +
 								" BEGIN " +
-									" INSERT INTO owners VALUES (c_id, a_id, f_id, l_start, l_end, c_type);" +
+									" INSERT INTO owners VALUES (c_id, s_c_id, a_id, f_id, c_start, c_end, c_type);" +
 									" RETURN; " +
 								" EXCEPTION WHEN unique_violation THEN " +
 								" END; " +

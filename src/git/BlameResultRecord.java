@@ -4,21 +4,22 @@ import scm2pgsql.GitResources;
 
 public class BlameResultRecord
 {
-	private String CommitId;
+	private String commitId;
+	private String sourceCommitId;
 	private String AuthorId;
 	private String FileId;
 	private GitResources.ChangeType Type;
-	private int LineStart;
-	private int LineEnd;
+	private int charStart;
+	private int charEnd;
 	public BlameResultRecord() {}
 	
 	public String getCommitId()
 	{
-		return CommitId;
+		return commitId;
 	}
-	public void setCommitId(String commitId)
+	public void setCommitId(String CommitId)
 	{
-		CommitId = commitId;
+		commitId = CommitId;
 	}
 	public String getAuthorId()
 	{
@@ -46,19 +47,29 @@ public class BlameResultRecord
 	}
 	public int getLineStart()
 	{
-		return LineStart;
+		return charStart;
 	}
 	public void setLineStart(int lineStart)
 	{
-		LineStart = lineStart;
+		charStart = lineStart;
 	}
 	public int getLineEnd()
 	{
-		return LineEnd;
+		return charEnd;
 	}
 	public void setLineEnd(int lineEnd)
 	{
-		LineEnd = lineEnd;
+		charEnd = lineEnd;
+	}
+
+	public String getSourceCommitId()
+	{
+		return sourceCommitId;
+	}
+
+	public void setSourceCommitId(String sourceCommitId)
+	{
+		this.sourceCommitId = sourceCommitId;
 	}
 	
 }
