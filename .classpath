@@ -7,5 +7,6 @@
 	<classpathentry kind="lib" path="lib/jgit.jar"/>
 	<classpathentry kind="lib" path="lib/db.jar"/>
 	<classpathentry kind="lib" path="/callgraphanalyzer/libs/differ.jar"/>
+	<classpathentry kind="lib" path="lib/postgresql-9.1-902.jdbc4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
