@@ -1,13 +1,13 @@
 package git;
 
-import scm2pgsql.Resources;
+import scm2pgsql.GitResources;
 
 public class BlameResultRecord
 {
 	private String CommitId;
 	private String AuthorId;
 	private String FileId;
-	private Resources.ChangeType Type;
+	private GitResources.ChangeType Type;
 	private int LineStart;
 	private int LineEnd;
 	public BlameResultRecord() {}
@@ -36,11 +36,11 @@ public class BlameResultRecord
 	{
 		FileId = fileId;
 	}
-	public Resources.ChangeType getType()
+	public GitResources.ChangeType getType()
 	{
 		return Type;
 	}
-	public void setType(Resources.ChangeType type)
+	public void setType(GitResources.ChangeType type)
 	{
 		Type = type;
 	}

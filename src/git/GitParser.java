@@ -33,15 +33,13 @@ import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 
-import scm2pgsql.Resources;
+import scm2pgsql.GitResources;
 import db.BranchEntryTO;
 import db.CommitsTO;
-import db.DbConnection;
 import db.FilesTO;
-import db.FileDiffsTO;
-import differ.diff_match_patch.Diff;
-import differ.diff_match_patch;
+import db.GitDb;
 import differ.filediffer;
+import differ.diff_match_patch.Diff;
 
 /**
  * Parses a git repo and adds the information to a PostgreSQL database.
@@ -58,7 +56,7 @@ import differ.filediffer;
 public class GitParser {
 	public File repoDir;
 	public Repository repoFile;
-	public DbConnection db = DbConnection.getInstance();
+	public GitDb db = new GitDb();
 	public Git git;
 	public PrintStream logger;
 	public static ObjectId ROOT_COMMIT_ID;
@@ -72,7 +70,7 @@ public class GitParser {
 			.build();
 		git = new Git(repoFile);
 		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
-		db.connect(Resources.dbUrl);
+		db.connect("");
 		db.createDB(repoName);
 		File log = new File("err.log");
 		log.createNewFile();
@@ -143,7 +141,7 @@ public class GitParser {
 		initialCommit.addTree(commit.getTree());
 		initialCommit.setRecursive(true);
 		
-		if (Resources.JAVA_ONLY)
+		if (GitResources.JAVA_ONLY)
 			initialCommit.setFilter(PathSuffixFilter.create(".java"));
 
 		// Setup for transfer objects
@@ -234,7 +232,7 @@ public class GitParser {
 		structure.addTree(currentCommit.getTree());
 		structure.setRecursive(true);
 		
-		if (Resources.JAVA_ONLY)
+		if (GitResources.JAVA_ONLY)
 			structure.setFilter(PathSuffixFilter.create(".java"));
 		
 		while(structure.next())
@@ -258,7 +256,7 @@ public class GitParser {
 		FilesTO currentFile;
 		for (DiffEntry d : diffs)
 		{
-			if (Resources.JAVA_ONLY && !d.getNewPath().endsWith(".java"))
+			if (GitResources.JAVA_ONLY && !d.getNewPath().endsWith(".java"))
 				continue;
 			currentFile = new FilesTO();
 			if (d.getChangeType() != DiffEntry.ChangeType.DELETE) {
@@ -323,7 +321,7 @@ public class GitParser {
 			rec.setFileId(currentFile.getFile_id());
 			rec.setLineEnd(-1);
 			rec.setLineStart(-1);
-			rec.setType(Resources.ChangeType.valueOf(change.toString()));
+			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
 			db.insertOwnerRecord(rec);
 			return;
 		}
@@ -351,7 +349,7 @@ public class GitParser {
 			{
 				// finish off the last record
 				rec.setLineEnd(i);
-				rec.setType(Resources.ChangeType.valueOf(change.toString()));
+				rec.setType(GitResources.ChangeType.valueOf(change.toString()));
 				db.insertOwnerRecord(rec);
 				
 				// we have a new owner
@@ -366,7 +364,7 @@ public class GitParser {
 		}
 		if (rec != null)
 		{
-			rec.setType(Resources.ChangeType.valueOf(change.toString()));
+			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
 			db.insertOwnerRecord(rec);
 		}
 		db.execCallableBatch();
