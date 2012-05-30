@@ -57,25 +57,7 @@ public class GitDb extends DbConnection
 		}
 		return true;
 	}
-	
-	public void insertOwnerRecord(BlameResultRecord rec)
-	{
-		try
-		{
-			callableBatch.setString(1, rec.getCommitId());
-			callableBatch.setString(2, rec.getAuthorId());
-			callableBatch.setString(3, rec.getFileId());
-			callableBatch.setInt(4, rec.getLineStart());
-			callableBatch.setInt(5, rec.getLineEnd());
-			callableBatch.setString(6, rec.getType().toString());
-			callableBatch.addBatch();
-		}
-		catch(SQLException e)
-		{
-			e.printStackTrace();
-		}
-	}
-	
+		
 	public boolean InsertFileDiff(FileDiffsTO diff)
 	{
 		try { 
@@ -88,7 +70,7 @@ public class GitDb extends DbConnection
 			s.setString(4, diff.getDiff_text());
 			s.setInt(5, diff.getChar_start());
 			s.setInt(6, diff.getChar_end());
-			s.setString(7, diff.getDiff_type());
+			s.setString(7, diff.getDiff_type().toString());
 			s.execute();
 		}
 		catch (SQLException e)
@@ -175,6 +157,24 @@ public class GitDb extends DbConnection
 		}
 	}
 	
+	public void insertOwnerRecord(BlameResultRecord rec)
+	{
+		try
+		{
+			callableBatch.setString(1, rec.getCommitId());
+			callableBatch.setString(2, rec.getAuthorId());
+			callableBatch.setString(3, rec.getFileId());
+			callableBatch.setInt(4, rec.getLineStart());
+			callableBatch.setInt(5, rec.getLineEnd());
+			callableBatch.setString(6, rec.getType().toString());
+			callableBatch.addBatch();
+		}
+		catch(SQLException e)
+		{
+			e.printStackTrace();
+		}
+	}			
+			
 	/**
 	 * Creates a db on the current connection.
 	 * @param dbName
@@ -187,9 +187,9 @@ public class GitDb extends DbConnection
 			// Drop the DB if it already exists
 			s = conn.prepareStatement("DROP DATABASE IF EXISTS " + dbName + ";");
 			s.execute();
-			
 			// First create the DB.
 			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";");
+
 			s.execute();
 			
 			// Reconnect to our new database.

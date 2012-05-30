@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS file_diffs (
 	diff_text text,
 	char_start integer NOT NULL,
 	char_end integer NOT NULL,
-	diff_type character varying (10)
+	diff_type character varying (30)
 );
 ALTER TABLE public.file_diffs OWNER TO postgres;
 

@@ -36,10 +36,14 @@ import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 import scm2pgsql.GitResources;
 import db.BranchEntryTO;
 import db.CommitsTO;
+import db.DbConnection;
+import db.FileDiffsTO;
+import db.FileDiffsTO.diff_types;
 import db.FilesTO;
 import db.GitDb;
 import differ.filediffer;
 import differ.diff_match_patch.Diff;
+import differ.filediffer.diffObjectResult;
 
 /**
  * Parses a git repo and adds the information to a PostgreSQL database.
@@ -60,7 +64,7 @@ public class GitParser {
 	public Git git;
 	public PrintStream logger;
 	public static ObjectId ROOT_COMMIT_ID;
-	
+
 	private void initialize(String gitDir) throws IOException
 	{
 		repoDir = new File(gitDir + "/.git");
@@ -213,6 +217,8 @@ public class GitParser {
 		// Diff the commits and parse the files.
 		ObjectId currentCommitTree = repoFile.resolve(currentCommit.getId().getName() + "^{tree}");
 		ObjectId prevCommitTree = repoFile.resolve(prevCommit.getId().getName() + "^{tree}");
+		String prevCommitID = prevCommit.getId().getName();
+		
 		CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
 		oldTreeIter.reset(reader, prevCommitTree);
 		CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
@@ -225,7 +231,7 @@ public class GitParser {
 		    .call();
 		System.out.println("Number of changed files: " + diffs.size());
 		
-		parseDiffs(currentCommitTO, diffs);
+		parseDiffs(currentCommitTO, prevCommitID, diffs);
 		db.execBatch();
 		
 		TreeWalk structure = new TreeWalk(repoFile);
@@ -242,7 +248,6 @@ public class GitParser {
 		db.InsertCommit(currentCommitTO);
 		db.InsertBranchEntry(currentBranchEntry);
 	}
-	
 	/** 
 	 * Function to parse the diffs from a specific commit.
 	 * @author braden
@@ -251,32 +256,59 @@ public class GitParser {
 	 * @throws MissingObjectException
 	 * @throws IOException
 	 */
-	public void parseDiffs(CommitsTO currentCommit, List<DiffEntry> diffs) throws MissingObjectException, IOException 
+	public void parseDiffs(CommitsTO currentCommit, String prevCommitID, List<DiffEntry> diffs) throws MissingObjectException, IOException  
 	{
-		FilesTO currentFile;
 		for (DiffEntry d : diffs)
 		{
 			if (GitResources.JAVA_ONLY && !d.getNewPath().endsWith(".java"))
 				continue;
-			currentFile = new FilesTO();
+			FilesTO currentFile = new FilesTO();
+			
+			// Not delete, store the raw file
 			if (d.getChangeType() != DiffEntry.ChangeType.DELETE) {
 				ObjectLoader objectL = repoFile.open(d.getNewId().toObjectId());
 				objectL.openStream();
 				ByteArrayOutputStream out = new ByteArrayOutputStream(); 
 				objectL.copyTo(out);
-				String raw = out.toString("UTF-8");
-				currentFile.setRaw_file(raw);
+				String newText = out.toString("UTF-8");
+				currentFile.setRaw_file(newText);
 				out.flush();
+				
+				// Get previous rawfile
+				if(d.getChangeType() != DiffEntry.ChangeType.ADD)
+				{
+					ObjectLoader objectLoader = repoFile.open(d.getOldId().toObjectId());
+					objectLoader.openStream();
+					ByteArrayOutputStream output = new ByteArrayOutputStream(); 
+					objectLoader.copyTo(output);
+					String oldText = output.toString("UTF-8");
+					output.flush();
+					
+					// Insert diff to db
+					parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommitID, oldText, newText, d.getNewPath());
+				}
+				else
+				{
+					// add empty text as the old version
+					FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommitID, newText, 0, newText.length(), diff_types.DIFF_ADD);
+					db.InsertFileDiff(filediff);
+				}
 			}
 			currentFile.setCommit_id(currentCommit.getCommit_id());				
+			
+			// Set file path: deleted file with old commit; new or modified file with new commit 
 			if (d.getChangeType() == DiffEntry.ChangeType.DELETE)
 				currentFile.setFile_id(d.getOldPath());
 			else 
 				currentFile.setFile_id(d.getNewPath());
+			
+			// Set file name
 			currentFile.setFile_name(d.getNewPath().substring(
 					d.getNewPath().lastIndexOf(File.separatorChar) != -1 ? 
 							d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
 								0, d.getNewPath().length()));
+			
+			// Store file and Change entry
 			db.InsertFiles(currentFile);
 			db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
 			updateOwnership(currentCommit, currentFile, d.getChangeType());
@@ -286,18 +318,26 @@ public class GitParser {
 	/**
 	 * Diff two version of the file and store the diff into file_diffs table
 	 */
-	public void parseFileDiffByDiffer(String currentCommit, String prevCommit, String oldRawFile, String newRawFile, FilesTO file) throws MissingObjectException, IOException 
+	public void parseFileDiffByDiffer(String currentCommit, String prevCommit, String oldRawFile, String newRawFile, String fileID) throws MissingObjectException, IOException 
 	{
 		// Get Differ to diff two raw files
 		filediffer differ = new filediffer(oldRawFile, newRawFile);
 		differ.diffFilesLineMode();
 		
-		// Get list of diff objects
-		for (Diff d : differ.getDiffObjects())
+		// Insert objects
+		for(diffObjectResult insert : differ.getInsertObjects())
 		{
-//			if(d.operation == diff_match_patch.Diff.operation.)
-//				FileDiffsTO filediff = new FileDiffsTO(file.getFile_id(), currentCommit, prevCommit, d.text, 0, 0, d.operation.toString());
-//			db.InsertFileDiff(filediff);
+			FileDiffsTO.diff_types type = diff_types.DIFF_MODIFYINSERT;
+			FileDiffsTO filediff = new FileDiffsTO(fileID, currentCommit, prevCommit, insert.diffObject.text, insert.start, insert.end, type);
+			db.InsertFileDiff(filediff);		
+		}
+		
+		// Delete objects
+		for(diffObjectResult delete : differ.getDeleteObjects())
+		{
+			FileDiffsTO.diff_types type = diff_types.DIFF_MODIFYDELETE;
+			FileDiffsTO filediff = new FileDiffsTO(fileID, currentCommit, prevCommit, delete.diffObject.text, delete.start, delete.end, type);
+			db.InsertFileDiff(filediff);		
 		}
 	}
 
