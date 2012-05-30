@@ -14,7 +14,6 @@ public class GitDb extends DbConnection
 	{
 		super.connect(dbName);
 		try {
-			// initialize the CallableStatement for the owners table
 			callableBatch = conn.prepareCall("{call upsert_owner_rec(?,?,?,?,?,?,?) } ");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -200,7 +199,7 @@ public class GitDb extends DbConnection
 			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("createdb.sql")));
 			
 			//--------------------------------------------------------------------------------------
-			// Stored procedure for upserting														
+			// Stored procedure for checking before inserting in a batch.											
 			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			
 			//--------------------------------------------------------------------------------------
 			s = conn.prepareStatement(

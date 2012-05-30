@@ -38,6 +38,7 @@ import db.BranchEntryTO;
 import db.CommitsTO;
 import db.DbConnection;
 import db.FileDiffsTO;
+import db.Resources;
 import db.FileDiffsTO.diff_types;
 import db.FilesTO;
 import db.GitDb;
@@ -367,9 +368,6 @@ public class GitParser {
 			return;
 		}
 		
-		// TODO @braden finish with character numbers and source_c_id
-		
-		
 		// Construct the blame command
 		BlameGenerator bg = new BlameGenerator(repoFile, currentFile.getFile_id());
 		bg.push(null, repoFile.resolve(currentCommit.getCommit_id()));
@@ -395,6 +393,10 @@ public class GitParser {
 				// finish off the last record
 				rec.setLineEnd(i);
 				rec.setType(GitResources.ChangeType.valueOf(change.toString()));
+				
+				// Convert from line -> char
+				rec.setLineStart(Resources.convertLineStartToCharStart(rec.getLineStart(), currentFile.getRaw_file()));
+				rec.setLineEnd(Resources.convertLineEndToCharEnd(rec.getLineEnd(), currentFile.getRaw_file()));
 				db.insertOwnerRecord(rec);
 				
 				// we have a new owner
@@ -411,6 +413,10 @@ public class GitParser {
 		if (rec != null)
 		{
 			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
+			
+			// Convert from line -> char
+			rec.setLineStart(Resources.convertLineStartToCharStart(rec.getLineStart(), currentFile.getRaw_file()));
+			rec.setLineEnd(Resources.convertLineEndToCharEnd(rec.getLineEnd(), currentFile.getRaw_file()));
 			db.insertOwnerRecord(rec);
 		}
 		db.execCallableBatch();
