@@ -1,7 +1,10 @@
 package db;
 
+import git.BlameResultRecord;
+
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -17,6 +20,7 @@ public class DbConnection {
 	public static DbConnection ref = null;
 	public static ScriptRunner sr;
 	public static Statement currentBatch;
+	public static CallableStatement callableBatch;
 	private DbConnection() 
 	{
 		try 
@@ -114,6 +118,9 @@ public class DbConnection {
 			sr = new ScriptRunner(conn, false, true);
 			sr.setLogWriter(null);
 			currentBatch = conn.createStatement();
+			
+			// initialize the CallableStatement for the owners table
+			callableBatch = conn.prepareCall("{call upsert_owner_rec(?,?,?,?,?,?) } ");
 		} 
 		catch (SQLException e) 
 		{
@@ -145,6 +152,33 @@ public class DbConnection {
 			
 			// Now load our default schema in.
 			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("scripts/createdb.sql")));
+			
+			//--------------------------------------------------------------------------------------
+			// Stored procedure for upserting														
+			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			
+			//--------------------------------------------------------------------------------------
+			s = conn.prepareStatement(
+					"CREATE FUNCTION upsert_owner_rec(c_id varchar(255), a_id varchar(255), f_id varchar(255), l_start INT, l_end INT, c_type varchar(12)) RETURNS VOID AS" +
+						"'" +
+						" DECLARE " + 
+							"dummy integer;" + 
+						" BEGIN " +
+							" LOOP " +
+								" select owners.line_start into dummy from owners where commit_id=c_id and owner_id=a_id and file_id=f_id and line_start=l_start and line_end=l_end and change_type=c_type;" +
+								" IF found THEN " +
+									" RETURN ;" +
+								" END IF;" +
+								" BEGIN " +
+									" INSERT INTO owners VALUES (c_id, a_id, f_id, l_start, l_end, c_type);" +
+									" RETURN; " +
+								" EXCEPTION WHEN unique_violation THEN " +
+								" END; " +
+							" END LOOP;" +
+						" END; " +
+						"'" +
+					" LANGUAGE plpgsql;");
+			s.execute();
+			
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -254,6 +288,19 @@ public class DbConnection {
 		}
 	}
 	
+	public boolean execCallableBatch() {
+		try {
+			callableBatch.executeBatch();
+			callableBatch.clearBatch();
+			return true;
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+			return false;
+		}
+	}
+	
 	public boolean InsertFiles(FilesTO files)
 	{
 		try { 
@@ -271,6 +318,24 @@ public class DbConnection {
 			return false;
 		}
 		return true;
+	}
+	
+	public void insertOwnerRecord(BlameResultRecord rec)
+	{
+		try
+		{
+			callableBatch.setString(1, rec.getCommitId());
+			callableBatch.setString(2, rec.getAuthorId());
+			callableBatch.setString(3, rec.getFileId());
+			callableBatch.setInt(4, rec.getLineStart());
+			callableBatch.setInt(5, rec.getLineEnd());
+			callableBatch.setString(6, rec.getType().toString());
+			callableBatch.addBatch();
+		}
+		catch(SQLException e)
+		{
+			e.printStackTrace();
+		}
 	}
 	
 	public boolean InsertFileDiff(FileDiffsTO diff)

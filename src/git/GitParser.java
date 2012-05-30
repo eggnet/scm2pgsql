@@ -12,10 +12,9 @@ import java.util.Set;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.blame.BlameGenerator;
 import org.eclipse.jgit.blame.BlameResult;
-import org.eclipse.jgit.diff.DiffAlgorithm;
 import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.diff.DiffAlgorithm.SupportedAlgorithm;
 import org.eclipse.jgit.diff.DiffEntry.ChangeType;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.AnyObjectId;
@@ -23,6 +22,7 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -45,6 +45,18 @@ import differ.diff_match_patch;
 import differ.filediffer;
 import differ.filediffer.diffObjectResult;
 
+/**
+ * Parses a git repo and adds the information to a PostgreSQL database.
+ * <p>
+ * The github repo for this project can be found at <a href='http://github.com/eggnet/scm2pgsql'>http://github.com/eggnet/scm2pgsql</a> 
+ * <p>
+ * This requires a git repo and takes the full path to the repo folder (ex. /home/user/testrepo)
+ * as the command line argument.
+ * <p>
+ * The Database schema that is the resulting output can be found here <a href='https://github.com/eggnet/scm2pgsql/wiki/Database-Schema'>https://github.com/eggnet/scm2pgsql/wiki/Database-Schema</a>
+ * @author braden
+ *
+ */
 public class GitParser {
 	public File repoDir;
 	public Repository repoFile;
@@ -110,8 +122,8 @@ public class GitParser {
 			{
 				e.printStackTrace();
 			}
-			db.close();
 		}
+		db.close();
 	}
 	
 	/**
@@ -167,6 +179,7 @@ public class GitParser {
 		for (String f: filenames)
 		{
 			db.InsertChangeEntry(currentCommit.getCommit_id(), f, ChangeType.ADD);
+			updateOwnership(currentCommit, currentFile, ChangeType.ADD);
 			db.InsertFileTreeEntry(currentCommit.getCommit_id(), f);
 		}
 		db.execBatch();
@@ -235,8 +248,15 @@ public class GitParser {
 		db.InsertCommit(currentCommitTO);
 		db.InsertBranchEntry(currentBranchEntry);
 	}
-	
-	public void parseDiffs(CommitsTO currentCommit, String prevCommitID, List<DiffEntry> diffs) throws MissingObjectException, IOException 
+	/** 
+	 * Function to parse the diffs from a specific commit.
+	 * @author braden
+	 * @param currentCommit
+	 * @param diffs
+	 * @throws MissingObjectException
+	 * @throws IOException
+	 */
+	public void parseDiffs(CommitsTO currentCommit, String prevCommitID, List<DiffEntry> diffs) throws MissingObjectException, IOException  
 	{
 		for (DiffEntry d : diffs)
 		{
@@ -291,11 +311,11 @@ public class GitParser {
 			// Store file and Change entry
 			db.InsertFiles(currentFile);
 			db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
-			updateOwnership(currentCommit, currentFile);
+			updateOwnership(currentCommit, currentFile, d.getChangeType());
 		}
 	}
 	
-	/*
+	/**
 	 * Diff two version of the file and store the diff into file_diffs table
 	 */
 	public void parseFileDiffByDiffer(String currentCommit, String prevCommit, String oldRawFile, String newRawFile, String fileID) throws MissingObjectException, IOException 
@@ -323,14 +343,70 @@ public class GitParser {
 
 	/**
 	 * Updates the ownership of a file with a range and inserts into the database.
-	 * @param currentCommit
+	 * @param currentCommit Commit that is being updated
 	 * @param currentFile
+	 * @throws IOException 
 	 */
-	public void updateOwnership(CommitsTO currentCommit, FilesTO currentFile)
+	public void updateOwnership(CommitsTO currentCommit, FilesTO currentFile, ChangeType change) throws IOException
 	{
-//		BlameResult blameRes = git.blame().setDiffAlgorithm(DiffAlgorithm.getAlgorithm(SupportedAlgorithm.MYERS)).setFilePath(currentFile.getFile_id()).setStartCommit(ROOT_COMMIT_ID).call();
-//		System.out.println(blameRes.getResultContents().toString());
+		// init
+		BlameResultRecord rec = null;
+		
+		// DELETE is special case
+		if (change == ChangeType.DELETE)
+		{
+			rec = new BlameResultRecord();
+			rec.setAuthorId(currentCommit.getAuthor_email());
+			rec.setCommitId(currentCommit.getCommit_id());
+			rec.setFileId(currentFile.getFile_id());
+			rec.setLineEnd(-1);
+			rec.setLineStart(-1);
+			rec.setType(Resources.ChangeType.valueOf(change.toString()));
+			db.insertOwnerRecord(rec);
+			return;
+		}
+		
+		// Construct the blame command
+		BlameGenerator bg = new BlameGenerator(repoFile, currentFile.getFile_id());
+		bg.push(null, repoFile.resolve(currentCommit.getCommit_id()));
+		bg.setFollowFileRenames(true);
+		BlameResult blameRes = bg.computeBlameResult();
+		
+		for(int i = 0;i < blameRes.getResultContents().size();i++)
+		{
+			PersonIdent sourceAuthor = blameRes.getSourceAuthor(i);
+			if (sourceAuthor == null)
+				continue;	// safety
+			else if (rec == null)
+			{
+				rec = new BlameResultRecord();
+				rec.setAuthorId(sourceAuthor.getEmailAddress());
+				rec.setFileId(currentFile.getFile_id());
+				rec.setCommitId(currentCommit.getCommit_id());
+				rec.setLineStart(i+1);
+			}
+			else if (!rec.getAuthorId().equals(sourceAuthor.getEmailAddress()))
+			{
+				// finish off the last record
+				rec.setLineEnd(i);
+				rec.setType(Resources.ChangeType.valueOf(change.toString()));
+				db.insertOwnerRecord(rec);
+				
+				// we have a new owner
+				rec = new BlameResultRecord();
+				rec.setAuthorId(sourceAuthor.getEmailAddress());
+				rec.setFileId(currentFile.getFile_id());
+				rec.setCommitId(currentCommit.getCommit_id());
+				rec.setLineStart(i+1);
+			}
+			else if (rec.getAuthorId().equals(sourceAuthor.getEmailAddress()))
+				rec.setLineEnd(i+1); 				// we have the same owner
+		}
+		if (rec != null)
+		{
+			rec.setType(Resources.ChangeType.valueOf(change.toString()));
+			db.insertOwnerRecord(rec);
+		}
+		db.execCallableBatch();
 	}
 }
-
-

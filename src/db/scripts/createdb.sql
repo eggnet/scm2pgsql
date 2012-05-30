@@ -196,3 +196,11 @@ CREATE TABLE edges (
 	network_id integer references networks(network_id)
 );
 
+CREATE TABLE IF NOT EXISTS owners (
+	commit_id character varying(255) NOT NULL,
+	owner_id character varying(255) NOT NULL,
+	file_id character varying(255) NOT NULL,
+	line_start integer NOT NULL,
+	line_end integer NOT NULL,
+	change_type varchar(12)
+);
