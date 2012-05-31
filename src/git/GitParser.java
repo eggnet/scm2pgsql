@@ -26,9 +26,11 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revplot.PlotCommit;
+import org.eclipse.jgit.revplot.PlotCommitList;
+import org.eclipse.jgit.revplot.PlotLane;
+import org.eclipse.jgit.revplot.PlotWalk;
 import org.eclipse.jgit.revwalk.RevSort;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
@@ -36,14 +38,12 @@ import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 import scm2pgsql.GitResources;
 import db.BranchEntryTO;
 import db.CommitsTO;
-import db.DbConnection;
 import db.FileDiffsTO;
-import db.Resources;
-import db.FileDiffsTO.diff_types;
 import db.FilesTO;
 import db.GitDb;
+import db.Resources;
+import db.FileDiffsTO.diff_types;
 import differ.filediffer;
-import differ.diff_match_patch.Diff;
 import differ.filediffer.diffObjectResult;
 
 /**
@@ -94,29 +94,35 @@ public class GitParser {
 				// Checkout the branch and setup variables.
 				git.checkout().setName(branch.getName()).call();
 				System.out.println(repoFile.getFullBranch());
-				RevWalk walk = new RevWalk(repoFile);
+				
+				// Set up the walk and initialize variables
+				PlotWalk revWalk = new PlotWalk(repoFile);
+				revWalk.sort(RevSort.REVERSE);
 				AnyObjectId root = repoFile.resolve(Constants.HEAD);
-				walk.sort(RevSort.REVERSE);
-				walk.markStart(walk.parseCommit(root));
-				RevCommit current, previous = null;
-				Iterator<RevCommit> i = walk.iterator();
+				revWalk.markStart(revWalk.parseCommit(root));
+				PlotCommitList<PlotLane> plotCommitList = new PlotCommitList<PlotLane>();
+				plotCommitList.source(revWalk);
+				plotCommitList.fillTo(Integer.MAX_VALUE);
+				Iterator<PlotCommit<PlotLane>> iter = plotCommitList.iterator();
 
 				// Safety
-				if (!i.hasNext())
+				if (!iter.hasNext())
 					return;
 				
-				// Walk our commits.
-				current = walk.parseCommit(i.next());
-				
+				PlotCommit<PlotLane> pc = iter.next();
+				PlotCommit<PlotLane> pcPrev = null;
+
 				// Set the first commit Id while we are here
-				ROOT_COMMIT_ID = current.getId();
+				ROOT_COMMIT_ID = pc.getId();
 				
-				parseFirstCommit(current, branch);
-				while(i.hasNext())
+				parseFirstCommit(pc, branch);
+				while(iter.hasNext())
 				{
-					previous = current;
-					current = walk.parseCommit(i.next());
-					parseCommit(current, previous, branch);
+					System.out.println(pc.getCommitterIdent().getEmailAddress());
+					System.out.println(pc.getChildCount());
+					pcPrev = pc;
+					pc = iter.next();
+					parseCommit(pc, pcPrev, branch);
 				}
 			}
 			catch (Exception e)
@@ -136,7 +142,7 @@ public class GitParser {
 	 * @throws GitAPIException
 	 * @throws IOException
 	 */
-	public void parseFirstCommit(RevCommit commit, Ref branch) throws GitAPIException, IOException
+	public void parseFirstCommit(PlotCommit commit, Ref branch) throws GitAPIException, IOException
 	{
 		// Need to finish the last commit -- Treat every file in this tree as a changed file.
 		CommitsTO currentCommit = new CommitsTO();
@@ -158,6 +164,10 @@ public class GitParser {
 		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
 		currentBranchEntry.setBranch_name(branch.getName());
 		currentBranchEntry.setCommit_id(currentCommit.getCommit_id());
+
+		// insert children
+		for (int i = 0;i < commit.getChildCount();i++)
+			db.insertCommitFamilyEntry(commit.getChild(i).getName(), commit.getName());
 		
 		// Add all the raw files in the tree
 		Set<String> filenames = new HashSet<String>();
@@ -197,7 +207,7 @@ public class GitParser {
 	 * @throws GitAPIException
 	 * @throws IOException
 	 */
-	public void parseCommit(RevCommit currentCommit, RevCommit prevCommit, Ref branch) throws GitAPIException, IOException
+	public void parseCommit(PlotCommit currentCommit, PlotCommit prevCommit, Ref branch) throws GitAPIException, IOException
 	{
 		// initialize transfer objects
 		CommitsTO currentCommitTO = new CommitsTO();
@@ -214,7 +224,11 @@ public class GitParser {
 		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
 		currentBranchEntry.setBranch_name(branch.getName());
 		currentBranchEntry.setCommit_id(currentCommitTO.getCommit_id());
-
+		
+		// insert children
+		for (int i = 0;i < currentCommit.getChildCount();i++)
+			db.insertCommitFamilyEntry(currentCommit.getChild(i).getName(), currentCommit.getName());
+		
 		// Diff the commits and parse the files.
 		ObjectId currentCommitTree = repoFile.resolve(currentCommit.getId().getName() + "^{tree}");
 		ObjectId prevCommitTree = repoFile.resolve(prevCommit.getId().getName() + "^{tree}");

@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.revplot.PlotCommit;
 
 public class GitDb extends DbConnection
 {
@@ -228,6 +229,22 @@ public class GitDb extends DbConnection
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
+		}
+	}
+	
+	public void insertCommitFamilyEntry(String commit, String parentCommit)
+	{
+		try { 
+			PreparedStatement s = conn.prepareStatement(
+					"INSERT INTO commit_family (parent, child)" +
+					" VALUES(?, ?)");
+			s.setString(1, parentCommit);
+			s.setString(2, commit);
+			currentBatch.addBatch(s.toString());
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
 		}
 	}
 }

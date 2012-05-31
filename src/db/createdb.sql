@@ -203,3 +203,8 @@ CREATE TABLE IF NOT EXISTS owners (
 	char_end integer NOT NULL,
 	change_type varchar(12)
 );
+
+CREATE TABLE IF NOT EXISTS commit_family (
+	parent character varying(255) NOT NULL,
+	child character varying(255) NOT NULL
+);	
