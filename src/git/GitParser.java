@@ -34,7 +34,7 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
-
+import static org.eclipse.jgit.lib.Constants.OBJ_BLOB;
 import scm2pgsql.GitResources;
 import db.BranchEntryTO;
 import db.CommitsTO;
@@ -120,7 +120,9 @@ public class GitParser {
 				{
 					pcPrev = pc;
 					pc = iter.next();
+					System.out.println(new Date().getTime());
 					parseCommit(pc, pcPrev, branch);
+					System.out.println(new Date().getTime());
 				}
 			}
 			catch (Exception e)
@@ -172,15 +174,12 @@ public class GitParser {
 		while(initialCommit.next())
 		{
 			currentFile = new FilesTO();
-			ObjectLoader objectL = repoFile.open(initialCommit.getObjectId(0));
-			objectL.openStream();
-			ByteArrayOutputStream out = new ByteArrayOutputStream(); 
-			objectL.copyTo(out);
-			String raw = out.toString("UTF-8");
+			byte[] b = repoFile.open(initialCommit.getObjectId(0).toObjectId(), OBJ_BLOB).getCachedBytes();
+			String newText = new String(b, "UTF-8");
 			filenames.add(initialCommit.getPathString());
 			currentFile.setCommit_id(currentCommit.getCommit_id());				
 			currentFile.setFile_id(initialCommit.getPathString());
-			currentFile.setRaw_file(raw);
+			currentFile.setRaw_file(newText);
 			currentFile.setFile_name(initialCommit.getNameString());
 			db.InsertFiles(currentFile);
 		}
@@ -281,24 +280,15 @@ public class GitParser {
 			
 			// Not delete, store the raw file
 			if (d.getChangeType() != DiffEntry.ChangeType.DELETE) {
-				ObjectLoader objectL = repoFile.open(d.getNewId().toObjectId());
-				objectL.openStream();
-				ByteArrayOutputStream out = new ByteArrayOutputStream(); 
-				objectL.copyTo(out);
-				String newText = out.toString("UTF-8");
+				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
+				String newText = new String(b, "UTF-8");
 				currentFile.setRaw_file(newText);
-				out.flush();
 				
 				// Get previous rawfile
 				if(d.getChangeType() != DiffEntry.ChangeType.ADD)
 				{
-					ObjectLoader objectLoader = repoFile.open(d.getOldId().toObjectId());
-					objectLoader.openStream();
-					ByteArrayOutputStream output = new ByteArrayOutputStream(); 
-					objectLoader.copyTo(output);
-					String oldText = output.toString("UTF-8");
-					output.flush();
-					
+					b = repoFile.open(d.getOldId().toObjectId(), OBJ_BLOB).getCachedBytes();
+					String oldText = new String(b, "UTF-8");
 					// Insert diff to db
 					parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommitID, oldText, newText, d.getNewPath());
 				}
@@ -387,7 +377,6 @@ public class GitParser {
 		bg.push(null, repoFile.resolve(currentCommit.getCommit_id()));
 		bg.setFollowFileRenames(true);
 		BlameResult blameRes = bg.computeBlameResult();
-		
 		for(int i = 0;i < blameRes.getResultContents().size();i++)
 		{
 			PersonIdent sourceAuthor = blameRes.getSourceAuthor(i);
