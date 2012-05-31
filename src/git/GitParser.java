@@ -118,8 +118,6 @@ public class GitParser {
 				parseFirstCommit(pc, branch);
 				while(iter.hasNext())
 				{
-					System.out.println(pc.getCommitterIdent().getEmailAddress());
-					System.out.println(pc.getChildCount());
 					pcPrev = pc;
 					pc = iter.next();
 					parseCommit(pc, pcPrev, branch);
@@ -224,6 +222,8 @@ public class GitParser {
 		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
 		currentBranchEntry.setBranch_name(branch.getName());
 		currentBranchEntry.setCommit_id(currentCommitTO.getCommit_id());
+		
+		System.out.println("Doing commit " + currentCommitTO.getCommit_id() + " at date " + currentCommitTO.getCommit_date()); 
 		
 		// insert children
 		for (int i = 0;i < currentCommit.getChildCount();i++)
