@@ -44,7 +44,7 @@ import db.GitDb;
 import db.Resources;
 import db.FileDiffsTO.diff_types;
 import differ.filediffer;
-import differ.filediffer.diffObjectResult;
+import differ.diffObjectResult;
 
 /**
  * Parses a git repo and adds the information to a PostgreSQL database.

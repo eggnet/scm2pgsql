@@ -48,7 +48,7 @@ public class GitDb extends DbConnection
 			s.setString(1, files.getFile_id());
 			s.setString(2, files.getFile_name());
 			s.setString(3, files.getCommit_id());
-			s.setString(4, files.getRaw_file());
+			s.setString(4, "");
 			s.execute();
 		}
 		catch (SQLException e)
