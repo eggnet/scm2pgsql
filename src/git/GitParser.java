@@ -239,7 +239,6 @@ public class GitParser {
 		newTreeIter.reset(reader, currentCommitTree);
 		List<DiffEntry> diffs;
 		diffs = git.diff()
-			.setOutputStream(null)
 		    .setNewTree(newTreeIter)
 		    .setOldTree(oldTreeIter)
 		    .call();
