@@ -1,6 +1,7 @@
 package git;
 
-import java.io.ByteArrayOutputStream;
+import static org.eclipse.jgit.lib.Constants.OBJ_BLOB;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -20,7 +21,6 @@ import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.AnyObjectId;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
@@ -34,7 +34,7 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
-import static org.eclipse.jgit.lib.Constants.OBJ_BLOB;
+
 import scm2pgsql.GitResources;
 import db.BranchEntryTO;
 import db.CommitsTO;
@@ -43,8 +43,8 @@ import db.FilesTO;
 import db.GitDb;
 import db.Resources;
 import db.FileDiffsTO.diff_types;
+import differ.diffObjectResult;
 import differ.filediffer;
-import differ.filediffer.diffObjectResult;
 
 /**
  * Parses a git repo and adds the information to a PostgreSQL database.
