@@ -130,7 +130,7 @@ public class GitParser {
 				e.printStackTrace();
 			}
 		}
-		db.close();
+		db.buff.close();
 	}
 	
 	/**

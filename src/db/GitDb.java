@@ -2,6 +2,12 @@ package db;
 
 import git.BlameResultRecord;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -11,6 +17,8 @@ import org.eclipse.jgit.revplot.PlotCommit;
 
 public class GitDb extends DbConnection
 {
+	public FileWriter writer;
+	public BufferedWriter buff;
 	public boolean connect(String dbName)
 	{
 		super.connect(dbName);
@@ -24,15 +32,38 @@ public class GitDb extends DbConnection
 	}
 	public GitDb () {
 		super();
+		try
+		{
+			writer = new FileWriter("dump.sql");
+			buff = new BufferedWriter(writer);
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	public boolean execBatch() {
+		try {
+			buff.write(currentBatch.toString());
+			currentBatch.clearBatch();
+			return true;
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			return false;
+		}
 	}
 	
 	public boolean execCallableBatch() {
 		try {
-			callableBatch.executeBatch();
+			buff.write(callableBatch.toString());
 			callableBatch.clearBatch();
 			return true;
 		}
-		catch (SQLException e)
+		catch (Exception e)
 		{
 			e.printStackTrace();
 			return false;
@@ -49,9 +80,9 @@ public class GitDb extends DbConnection
 			s.setString(2, files.getFile_name());
 			s.setString(3, files.getCommit_id());
 			s.setString(4, files.getRaw_file());
-			s.execute();
+			buff.write(s.toString());
 		}
-		catch (SQLException e)
+		catch (Exception e)
 		{
 			return false;
 		}
@@ -71,9 +102,9 @@ public class GitDb extends DbConnection
 			s.setInt(5, diff.getChar_start());
 			s.setInt(6, diff.getChar_end());
 			s.setString(7, diff.getDiff_type().toString());
-			s.execute();
+			buff.write(s.toString());
 		}
-		catch (SQLException e)
+		catch (Exception e)
 		{
 			return false;
 		}
@@ -92,9 +123,9 @@ public class GitDb extends DbConnection
 			s.setString(3, commit.getAuthor_email());
 			s.setString(4, commit.getComment());
 		    s.setString(5, commit.getBranch_id());
-			s.execute();
+		    buff.write(s.toString());
 	    }
-	    catch (SQLException e)
+	    catch (Exception e)
 	    {
 	    	e.printStackTrace();
 	    	return false;
@@ -111,9 +142,9 @@ public class GitDb extends DbConnection
 			s.setString(1, branchEntry.getBranch_id());
 			s.setString(2, branchEntry.getBranch_name());
 			s.setString(3, branchEntry.getCommit_id());
-			s.execute();
+			buff.write(s.toString());
 		}
-		catch (SQLException e)
+		catch (Exception e)
 		{
 			return false;
 		}
@@ -185,17 +216,8 @@ public class GitDb extends DbConnection
 	{
 		PreparedStatement s;
 		try {
-			// Drop the DB if it already exists
-			s = conn.prepareStatement("DROP DATABASE IF EXISTS " + dbName + ";");
-			s.execute();
 			// First create the DB.
 			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";");
-
-			s.execute();
-			
-			// Reconnect to our new database.
-			connect(dbName.toLowerCase());
-			
 			// Now load our default schema in.
 			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("createdb.sql")));
 			
