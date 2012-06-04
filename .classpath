@@ -5,8 +5,8 @@
 	<classpathentry kind="src" path="utils"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="/Users/braden/scm2pgsql/libs/jgit.jar"/>
-	<classpathentry kind="lib" path="/Users/braden/scm2pgsql/libs/db.jar"/>
-	<classpathentry kind="lib" path="libs/differ.jar"/>
 	<classpathentry kind="lib" path="/Users/braden/scm2pgsql/libs/postgresql-9.1-902.jdbc4.jar"/>
+	<classpathentry kind="lib" path="/libs/database/database-20120604.jar"/>
+	<classpathentry kind="lib" path="/libs/differ/differ-20120604.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
