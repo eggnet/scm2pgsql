@@ -232,7 +232,7 @@ public class GitDb extends DbConnection
 			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			
 			//--------------------------------------------------------------------------------------
 			s = conn.prepareStatement(
-					"CREATE FUNCTION upsert_owner_rec(c_id varchar(255), s_c_id varchar(255), a_id varchar(255), f_id varchar(255), c_start INT, c_end INT, c_type varchar(12)) RETURNS VOID AS" +
+					"CREATE OR REPLACE FUNCTION upsert_owner_rec(c_id varchar(255), s_c_id varchar(255), a_id varchar(255), f_id varchar(255), c_start INT, c_end INT, c_type varchar(12)) RETURNS VOID AS" +
 						"'" +
 						" DECLARE " + 
 							"dummy integer;" + 
