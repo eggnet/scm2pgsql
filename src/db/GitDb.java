@@ -2,18 +2,13 @@ package db;
 
 import git.BlameResultRecord;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.revplot.PlotCommit;
 
 public class GitDb extends DbConnection
 {
@@ -79,8 +74,8 @@ public class GitDb extends DbConnection
 			s.setString(1, files.getFile_id());
 			s.setString(2, files.getFile_name());
 			s.setString(3, files.getCommit_id());
-			s.setString(4, files.getRaw_file());
-			buff.write(s.toString());
+			s.setString(4, "");
+			s.execute();
 		}
 		catch (Exception e)
 		{
@@ -267,6 +262,19 @@ public class GitDb extends DbConnection
 		catch (SQLException e)
 		{
 			e.printStackTrace();
+		}
+	}
+	
+	public boolean close() {
+		try {
+			conn.close();
+			buff.close();
+			return true;
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			return false;
 		}
 	}
 }
