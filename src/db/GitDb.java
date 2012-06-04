@@ -14,6 +14,7 @@ public class GitDb extends DbConnection
 {
 	public FileWriter writer;
 	public BufferedWriter buff;
+	public StringBuilder stringBatch; 
 	public boolean connect(String dbName)
 	{
 		super.connect(dbName);
@@ -31,6 +32,7 @@ public class GitDb extends DbConnection
 		{
 			writer = new FileWriter("dump.sql");
 			buff = new BufferedWriter(writer);
+			stringBatch = new StringBuilder();
 		}
 		catch (Exception e)
 		{
@@ -41,8 +43,8 @@ public class GitDb extends DbConnection
 	@Override
 	public boolean execBatch() {
 		try {
-			buff.write(currentBatch.toString());
-			currentBatch.clearBatch();
+			buff.write(stringBatch.toString());
+			stringBatch = new StringBuilder();
 			return true;
 		}
 		catch (Exception e)
@@ -54,7 +56,6 @@ public class GitDb extends DbConnection
 	
 	public boolean execCallableBatch() {
 		try {
-			buff.write(callableBatch.toString());
 			callableBatch.clearBatch();
 			return true;
 		}
@@ -75,7 +76,7 @@ public class GitDb extends DbConnection
 			s.setString(2, files.getFile_name());
 			s.setString(3, files.getCommit_id());
 			s.setString(4, "");
-			s.execute();
+			buff.write(s.toString() + ";");
 		}
 		catch (Exception e)
 		{
@@ -97,7 +98,7 @@ public class GitDb extends DbConnection
 			s.setInt(5, diff.getChar_start());
 			s.setInt(6, diff.getChar_end());
 			s.setString(7, diff.getDiff_type().toString());
-			buff.write(s.toString());
+			buff.write(s.toString()+";");
 		}
 		catch (Exception e)
 		{
@@ -118,7 +119,7 @@ public class GitDb extends DbConnection
 			s.setString(3, commit.getAuthor_email());
 			s.setString(4, commit.getComment());
 		    s.setString(5, commit.getBranch_id());
-		    buff.write(s.toString());
+		    buff.write(s.toString() + ";");
 	    }
 	    catch (Exception e)
 	    {
@@ -137,7 +138,7 @@ public class GitDb extends DbConnection
 			s.setString(1, branchEntry.getBranch_id());
 			s.setString(2, branchEntry.getBranch_name());
 			s.setString(3, branchEntry.getCommit_id());
-			buff.write(s.toString());
+			buff.write(s.toString() + ";");
 		}
 		catch (Exception e)
 		{
@@ -155,7 +156,7 @@ public class GitDb extends DbConnection
 			s.setString(1, commitId);
 			s.setString(2, fileId);
 			s.setString(3, type.toString());
-			currentBatch.addBatch(s.toString());
+			stringBatch.append(s.toString() + ";");
 			return true;
 		}
 		catch (SQLException e)
@@ -173,7 +174,7 @@ public class GitDb extends DbConnection
 					" VALUES(?, ?)");
 			s.setString(1, commitId);
 			s.setString(2, fileId);
-			currentBatch.addBatch(s.toString());
+			stringBatch.append(s.toString()+";");
 			return true;
 		}
 		catch (SQLException e)
@@ -187,6 +188,17 @@ public class GitDb extends DbConnection
 	{
 		try
 		{
+			String sql = "insert into owners values (?,?,?,?,?,?,?)";
+			PreparedStatement ps = conn.prepareStatement(sql);
+			
+			ps.setString(1, rec.getCommitId());
+			ps.setString(2, rec.getSourceCommitId());
+			ps.setString(3, rec.getAuthorId());
+			ps.setString(4, rec.getFileId());
+			ps.setInt(5, rec.getLineStart());
+			ps.setInt(6, rec.getLineEnd());
+			ps.setString(7, rec.getType().toString());
+			
 			callableBatch.setString(1, rec.getCommitId());
 			callableBatch.setString(2, rec.getSourceCommitId());
 			callableBatch.setString(3, rec.getAuthorId());
@@ -194,6 +206,7 @@ public class GitDb extends DbConnection
 			callableBatch.setInt(5, rec.getLineStart());
 			callableBatch.setInt(6, rec.getLineEnd());
 			callableBatch.setString(7, rec.getType().toString());
+			stringBatch.append(ps.toString()+";");
 			callableBatch.addBatch();
 		}
 		catch(SQLException e)
@@ -213,8 +226,6 @@ public class GitDb extends DbConnection
 		try {
 			// First create the DB.
 			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";");
-			// Now load our default schema in.
-			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("createdb.sql")));
 			
 			//--------------------------------------------------------------------------------------
 			// Stored procedure for checking before inserting in a batch.											
@@ -257,7 +268,7 @@ public class GitDb extends DbConnection
 					" VALUES(?, ?)");
 			s.setString(1, parentCommit);
 			s.setString(2, commit);
-			currentBatch.addBatch(s.toString());
+			stringBatch.append(s.toString()+";");
 		}
 		catch (SQLException e)
 		{
