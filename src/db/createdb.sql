@@ -191,7 +191,7 @@ CREATE TABLE edges (
 	source varchar(255),
 	target varchar(255),
 	weight real,
-	boolean is_fuzzy,
+	is_fuzzy boolean,
 	network_id integer references networks(network_id)
 );
 
