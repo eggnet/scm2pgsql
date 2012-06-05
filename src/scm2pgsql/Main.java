@@ -12,7 +12,7 @@ public class Main {
 	{
 		System.out.println("Scm2Pgsql tool developed by eggnet at UVic.");
 		try {
-			if (args.length < 1)
+			if (args.length < 3)
 			{
 				throw new ArrayIndexOutOfBoundsException();
 			}
@@ -20,7 +20,9 @@ public class Main {
 			{
 				try 
 				{
-					if (args.length == 2) GitResources.JAVA_ONLY = Boolean.parseBoolean(args[1]);
+					if (args.length == 4) GitResources.JAVA_ONLY = Boolean.parseBoolean(args[3]);
+					GitResources.startPoint = Float.parseFloat(args[1]);
+					GitResources.endPoint = Float.parseFloat(args[2]);
 					gitParser.parseRepo(args[0]);
 				} 
 				catch (MissingObjectException e) 
@@ -35,7 +37,7 @@ public class Main {
 		}
 		catch (ArrayIndexOutOfBoundsException e)
 		{
-			System.out.println("Usage scm2pgsql <input repository>");
+			System.out.println("Usage scm2pgsql <input repository> <start_percentage> <end_percentage> [java_only]");
 		}
 	}
 }

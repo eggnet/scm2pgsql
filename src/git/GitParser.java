@@ -30,6 +30,7 @@ import org.eclipse.jgit.revplot.PlotCommit;
 import org.eclipse.jgit.revplot.PlotCommitList;
 import org.eclipse.jgit.revplot.PlotLane;
 import org.eclipse.jgit.revplot.PlotWalk;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -76,7 +77,10 @@ public class GitParser {
 		git = new Git(repoFile);
 		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
 		db.connect("");
-		db.createDB(repoName);
+		if (GitResources.startPoint == 0)
+			db.createDB(repoName);
+		else
+			db.connect(repoName);
 		File log = new File("err.log");
 		log.createNewFile();
 		logger = new PrintStream(log);
@@ -94,6 +98,14 @@ public class GitParser {
 				// Checkout the branch and setup variables.
 				git.checkout().setName(branch.getName()).call();
 				System.out.println(repoFile.getFullBranch());
+				
+				Iterator<RevCommit> it = git.log().all().call().iterator();
+				while (it.next() != null)
+					GitResources.totalCommits++;
+				
+				// Turn percentages into numbers
+				double endCommitNumber = Math.floor((GitResources.endPoint / 100) * GitResources.totalCommits);
+				double startCommitNumber = Math.ceil((GitResources.startPoint/100)*GitResources.totalCommits);
 				
 				// Set up the walk and initialize variables
 				PlotWalk revWalk = new PlotWalk(repoFile);
@@ -114,14 +126,17 @@ public class GitParser {
 
 				// Set the first commit Id while we are here
 				ROOT_COMMIT_ID = pc.getId();
+				if (startCommitNumber == 0)
+					parseFirstCommit(pc, branch);
 				
-				parseFirstCommit(pc, branch);
-				while(iter.hasNext())
+				for(int currentCount = 1;iter.hasNext() && currentCount <= endCommitNumber;currentCount++)
 				{
 					pcPrev = pc;
 					pc = iter.next();
 					System.out.println(new Date().getTime());
-					parseCommit(pc, pcPrev, branch);
+					
+					if (currentCount >= startCommitNumber)
+						parseCommit(pc, pcPrev, branch);
 					System.out.println(new Date().getTime());
 				}
 			}
