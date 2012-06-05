@@ -183,7 +183,7 @@ ALTER TABLE ONLY networks ALTER COLUMN network_id SET DEFAULT nextval('networks_
 CREATE TABLE nodes (
 	id varchar(255),
 	label varchar(255),
-	network_id integer references networks(network_id),
+	network_id integer references networks(network_id) on delete cascade,
 	PRIMARY KEY(id)
 );
 
@@ -192,7 +192,7 @@ CREATE TABLE edges (
 	target varchar(255),
 	weight real,
 	is_fuzzy boolean,
-	network_id integer references networks(network_id)
+	network_id integer references networks(network_id) on delete cascade
 );
 
 CREATE TABLE IF NOT EXISTS owners (
