@@ -276,23 +276,28 @@ public class GitParser {
 			oldTreeIter.reset(reader, prevCommitTree);
 			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
-			List<DiffEntry> diffs;
-			diffs = git.diff()
-			    .setNewTree(newTreeIter)
-			    .setOldTree(oldTreeIter)
-			    .call();
+			List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
 			System.out.println("Number of changed files: " + diffs.size());
 			
 			// Get Plot commit for children
+			PlotCommit childCommit = getPlotCommit(childId);
+			if(childCommit == null)
+				continue;
 			
 			// Insert diffs object
-			parseDiffs(currentCommitTO, parentId, diffs);
+			CommitsTO childCommitTO = new CommitsTO();
+
+			// setup values for transfer objects
+			childCommitTO.setAuthor		 (childCommit.getAuthorIdent().getName());
+			childCommitTO.setAuthor_email(childCommit.getAuthorIdent().getEmailAddress());
+			childCommitTO.setCommit_id	 (childCommit.getId().getName());
+			childCommitTO.setComment	 (childCommit.getFullMessage());
+			childCommitTO.setCommit_date (new Date(childCommit.getCommitTime() * 1000L));
+			childCommitTO.setBranch_id	 (branch.getObjectId().getName());
+			parseDiffs(childCommitTO, parentId, diffs);
 			db.execBatch();
 		}
-
-		
-
 		
 	}
 	
@@ -388,6 +393,12 @@ public class GitParser {
 	}
 	
 	/** 
+	 * @Triet
+	 * 1. Get 2 source files, compare them and put into file_diffs
+	 * 2. Insert the CurrentCommitFile to Files
+	 * 3. Insert changeEntry - Need to update Changes table to have OldCommitID or sack it
+	 * 4. Update ownership for This Parent and Child relationship
+	 * 
 	 * Function to parse the diffs from a specific commit.
 	 * @author braden
 	 * @param currentCommit
