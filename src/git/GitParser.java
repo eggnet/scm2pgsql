@@ -113,18 +113,15 @@ public class GitParser {
 					return;
 				
 				PlotCommit<PlotLane> pc = iter.next();
-				PlotCommit<PlotLane> pcPrev = null;
-
 				// Set the first commit Id while we are here
 				ROOT_COMMIT_ID = pc.getId();
 				
 				parseFirstCommit(pc, branch);
 				while(iter.hasNext())
 				{
-					pcPrev = pc;
 					pc = iter.next();
 					System.out.println(new Date().getTime());
-					parseCommit(pc, pcPrev, branch);
+					parseCommit(pc, branch);
 					System.out.println(new Date().getTime());
 				}
 			}
@@ -224,9 +221,10 @@ public class GitParser {
 	 * 		4. For each children commit
 	 * 			 1. Insert FamilyCommitEntry (Parent, Child)
 	 * 			 2. Diff Parent and child
-	 * 				   1.Insert diff objects
+	 * 				   1.Insert diffEntry
 	 * 				   2.Update ownership for the files
-
+	 *				   3.Insert File in Files
+	 *				   4.Insert ChangeEntry in Changes	 
 	 * @param currentCommit
 	 * @param nextCommit
 	 * @param branch
@@ -276,7 +274,7 @@ public class GitParser {
 			oldTreeIter.reset(reader, prevCommitTree);
 			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
-			List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
+			List<DiffEntry> diffs = git.diff().setOutputStream(logger).setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
 			System.out.println("Number of changed files: " + diffs.size());
 			
@@ -295,81 +293,12 @@ public class GitParser {
 			childCommitTO.setComment	 (childCommit.getFullMessage());
 			childCommitTO.setCommit_date (new Date(childCommit.getCommitTime() * 1000L));
 			childCommitTO.setBranch_id	 (branch.getObjectId().getName());
-			parseDiffs(childCommitTO, parentId, diffs);
+			parseDiffs(childCommitTO, currentCommitTO, diffs);
 			db.execBatch();
 		}
 		
 	}
-	
-	public void parseCommit(PlotCommit currentCommit, PlotCommit prevCommit, Ref branch) throws GitAPIException, IOException
-	{
-		// initialize transfer objects
-		CommitsTO currentCommitTO = new CommitsTO();
-		BranchEntryTO currentBranchEntry = new BranchEntryTO();
-		ObjectReader reader = repoFile.newObjectReader();
 
-		// setup values for transfer objects
-		currentCommitTO.setAuthor(currentCommit.getAuthorIdent().getName());
-		currentCommitTO.setAuthor_email(currentCommit.getAuthorIdent().getEmailAddress());
-		currentCommitTO.setCommit_id(currentCommit.getId().getName());
-		currentCommitTO.setComment(currentCommit.getFullMessage());
-		currentCommitTO.setCommit_date(new Date(currentCommit.getCommitTime() * 1000L));
-		currentCommitTO.setBranch_id(branch.getObjectId().getName());
-		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
-		currentBranchEntry.setBranch_name(branch.getName());
-		currentBranchEntry.setCommit_id(currentCommitTO.getCommit_id());
-		
-		System.out.println("Doing commit " + currentCommitTO.getCommit_id() + " at date " + currentCommitTO.getCommit_date()); 
-		
-		// insert children
-		for (int i = 0;i < currentCommit.getChildCount();i++)
-		{
-			db.insertCommitFamilyEntry(currentCommit.getChild(i).getName(), currentCommit.getName());
-			
-			// For each pair of parent and child, insert diffs file
-			
-		}
-		
-		// Store previous commit and Diff the commits and parse the files.
-		ObjectId currentCommitTree = repoFile.resolve(currentCommit.getId().getName() + "^{tree}");
-		ObjectId prevCommitTree    = repoFile.resolve(prevCommit.getId().getName() + "^{tree}");
-		String prevCommitID 	   = prevCommit.getId().getName();
-		
-		CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
-		oldTreeIter.reset(reader, prevCommitTree);
-		CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
-		newTreeIter.reset(reader, currentCommitTree);
-		List<DiffEntry> diffs;
-		diffs = git.diff()
-			.setOutputStream(logger)
-		    .setNewTree(newTreeIter)
-		    .setOldTree(oldTreeIter)
-		    .call();
-		
-		System.out.println("Number of changed files: " + diffs.size());
-		
-		// send currentCommit and the diffs object, then add them to file_diffs
-		parseDiffs(currentCommitTO, prevCommitID, diffs);
-		db.execBatch();
-		
-		// Insert file tree entries
-		TreeWalk structure = new TreeWalk(repoFile);
-		structure.addTree(currentCommit.getTree());
-		structure.setRecursive(true);
-		
-		if (GitResources.JAVA_ONLY)
-			structure.setFilter(PathSuffixFilter.create(".java"));
-		
-		while(structure.next())
-			db.InsertFileTreeEntry(currentCommitTO.getCommit_id(), structure.getPathString());
-		
-		db.execBatch();
-		
-		//Insert current commit and Branch entry
-		db.InsertCommit(currentCommitTO);
-		db.InsertBranchEntry(currentBranchEntry);
-	}
-	
 	/**
 	 * For current commit revision, insert all the source file exist in it
 	 * @throws IOException 
@@ -407,7 +336,7 @@ public class GitParser {
 	 * @throws MissingObjectException
 	 * @throws IOException
 	 */
-	public void parseDiffs(CommitsTO currentCommit, String prevCommitID, List<DiffEntry> diffs) throws MissingObjectException, IOException  
+	public void parseDiffs(CommitsTO currentCommit, CommitsTO prevCommit, List<DiffEntry> diffs) throws MissingObjectException, IOException  
 	{
 		for (DiffEntry d : diffs)
 		{
@@ -426,13 +355,12 @@ public class GitParser {
 				{
 					b = repoFile.open(d.getOldId().toObjectId(), OBJ_BLOB).getCachedBytes();
 					String oldText = new String(b, "UTF-8");
-					// Insert diff to db
-					parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommitID, oldText, newText, d.getNewPath());
+					parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommit.getCommit_id(), oldText, newText, d.getNewPath());
 				}
 				else
 				{
 					// add empty text as the old version
-					FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommitID, newText, 0, newText.length(), diff_types.DIFF_ADD);
+					FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), newText, 0, newText.length(), diff_types.DIFF_ADD);
 					db.InsertFileDiff(filediff);
 				}
 			}
