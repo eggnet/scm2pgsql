@@ -21,13 +21,11 @@ COMMENT ON DATABASE scm2pgsql IS 'This database will house the SCM information o
 
 CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
-
 --
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
 
 SET search_path = public, pg_catalog;
 
@@ -48,9 +46,6 @@ CREATE TABLE commits (
     commit_date timestamp with time zone,
     branch_id character varying(255)
 );
-
-
-ALTER TABLE public.commits OWNER TO postgres;
 
 --
 -- Name: commits_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
