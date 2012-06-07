@@ -162,10 +162,7 @@ public class GitParser {
 	 */
 	public void parseFirstCommit(PlotCommit commit, Ref branch) throws GitAPIException, IOException
 	{
-		// Need to finish the last commit -- Treat every file in this tree as a changed file.
-		CommitsTO currentCommit = new CommitsTO();
-		BranchEntryTO currentBranchEntry = new BranchEntryTO();
-		FilesTO currentFile = new FilesTO();
+		// Get all files in first commit
 		TreeWalk initialCommit = new TreeWalk(repoFile);
 		initialCommit.addTree(commit.getTree());
 		initialCommit.setRecursive(true);
@@ -173,51 +170,41 @@ public class GitParser {
 		if (GitResources.JAVA_ONLY)
 			initialCommit.setFilter(PathSuffixFilter.create(".java"));
 
-		// Setup for transfer objects
+		CommitsTO currentCommit = new CommitsTO();
 		currentCommit.setAuthor(commit.getAuthorIdent().getName());
 		currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
 		currentCommit.setCommit_id(commit.getId().getName());
 		currentCommit.setComment(commit.getFullMessage());
 		currentCommit.setCommit_date(new Date(commit.getCommitTime() * 1000L));
-		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
-		currentBranchEntry.setBranch_name(branch.getName());
-		currentBranchEntry.setCommit_id(currentCommit.getCommit_id());
-
-		// insert children
-		for (int i = 0;i < commit.getChildCount();i++)
-			db.insertCommitFamilyEntry(commit.getChild(i).getName(), commit.getName());
 		
-		// Add all the raw files in the tree
-		Set<String> filenames = new HashSet<String>();
+		// Insert Diff as ADD objects for first commit.
 		while(initialCommit.next())
 		{
-			currentFile = new FilesTO();
+			FilesTO currentFile = new FilesTO();
 			byte[] b = repoFile.open(initialCommit.getObjectId(0).toObjectId(), OBJ_BLOB).getCachedBytes();
 			String newText = new String(b, "UTF-8");
-			filenames.add(initialCommit.getPathString());
-			currentFile.setCommit_id(currentCommit.getCommit_id());				
+			currentFile.setCommit_id(commit.getId().getName());				
 			currentFile.setFile_id(initialCommit.getPathString());
 			currentFile.setRaw_file(newText);
 			currentFile.setFile_name(initialCommit.getNameString());
 			db.InsertFiles(currentFile);
-		}
-		System.out.println("Number of changed files: " + filenames.size());
-		for (String f: filenames)
-		{
-			db.InsertChangeEntry(currentCommit.getCommit_id(), f, ChangeType.ADD);
+			
+			// insert Change entry and update Ownership
+			db.InsertChangeEntry(commit.getId().getName(), initialCommit.getPathString(), ChangeType.ADD);
 			updateOwnership(currentCommit, currentFile, ChangeType.ADD);
-			db.InsertFileTreeEntry(currentCommit.getCommit_id(), f);
+			db.InsertFileTreeEntry(currentCommit.getCommit_id(), initialCommit.getPathString());
 		}
 		db.execBatch();
-		db.InsertCommit(currentCommit);
-		db.InsertBranchEntry(currentBranchEntry);
+		
+		// Insert relationships and files for its children
+		parseCommit(commit, branch);
 	}
 	
 	/**
 	 * Parses a given commit into the database.
 	 * 		1. Insert CommitTO - commit info
 	 * 		2. Insert BranchentryTo - (branch,commit)
-	 * 		3. Insert FileStructureTo
+	 * 		3. Insert File tree entries
 	 * 		4. For each children commit
 	 * 			 1. Insert FamilyCommitEntry (Parent, Child)
 	 * 			 2. Diff Parent and child
