@@ -4,10 +4,10 @@
 	<classpathentry kind="src" path="libs"/>
 	<classpathentry kind="src" path="utils"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/scm2pgsql/libs/jgit.jar"/>
+	<classpathentry kind="lib" path="libs/jgit.jar"/>
 	<classpathentry kind="lib" path="/libs/database/database.jar"/>
-	<classpathentry kind="lib" path="/libs/differ/differ.jar"/>
 	<classpathentry kind="lib" path="libs/org.eclipse.jgit-1.3.0.201202151440-r.jar"/>
 	<classpathentry kind="lib" path="libs/postgresql-9.1-902.jdbc4.jar"/>
+	<classpathentry kind="lib" path="/libs/differ/differ-20120604.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
