@@ -67,50 +67,10 @@ ALTER SEQUENCE commits_id_seq OWNED BY commits.id;
 
 
 --
--- Name: files; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
---
-
-CREATE TABLE files (
-    id integer NOT NULL,
-    file_id character varying(255),
-    file_name character varying(255),
-    commit_id character varying(255),
-    raw_file text
-);
-
-
---
--- Name: files_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE files_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE files_id_seq OWNED BY files.id;
-
-
---
 -- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY commits ALTER COLUMN id SET DEFAULT nextval('commits_id_seq'::regclass);
-
-
---
--- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY files ALTER COLUMN id SET DEFAULT nextval('files_id_seq'::regclass);
-
 
 --
 -- Name: public; Type: ACL; Schema: -; Owner: postgres

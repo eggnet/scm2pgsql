@@ -187,7 +187,6 @@ public class GitParser {
 			currentFile.setFile_id(initialCommit.getPathString());
 			currentFile.setRaw_file(newText);
 			currentFile.setFile_name(initialCommit.getNameString());
-			db.InsertFiles(currentFile);
 			
 			// insert Change entry and update Ownership
 			db.InsertChangeEntry(commit.getId().getName(), initialCommit.getPathString(), ChangeType.ADD);
@@ -210,8 +209,7 @@ public class GitParser {
 	 * 			 2. Diff Parent and child
 	 * 				   1.Insert diffEntry
 	 * 				   2.Update ownership for the files
-	 *				   3.Insert File in Files
-	 *				   4.Insert ChangeEntry in Changes	 
+	 *				   3.Insert ChangeEntry in Changes	 
 	 * @param currentCommit
 	 * @param nextCommit
 	 * @param branch
@@ -312,9 +310,8 @@ public class GitParser {
 	/** 
 	 * @Triet
 	 * 1. Get 2 source files, compare them and put into file_diffs
-	 * 2. Insert the CurrentCommitFile to Files
-	 * 3. Insert changeEntry - Need to update Changes table to have OldCommitID or sack it
-	 * 4. Update ownership for This Parent and Child relationship
+	 * 2. Insert changeEntry - Need to update Changes table to have OldCommitID or sack it
+	 * 3. Update ownership for This Parent and Child relationship
 	 * 
 	 * Function to parse the diffs from a specific commit.
 	 * @author braden
@@ -365,8 +362,7 @@ public class GitParser {
 							d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
 								0, d.getNewPath().length()));
 			
-			// Store file and Change entry
-			db.InsertFiles(currentFile);
+			// Changes entry and update Ownership
 			db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
 			updateOwnership(currentCommit, currentFile, d.getChangeType());
 		}

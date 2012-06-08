@@ -41,25 +41,6 @@ public class GitDb extends DbConnection
 		}
 	}
 	
-	public boolean InsertFiles(FilesTO files)
-	{
-		try { 
-			PreparedStatement s = conn.prepareStatement(
-					"INSERT INTO files (id, file_id, file_name, commit_id, raw_file)" +
-					" VALUES(default, ?, ?, ?, ?);");
-			s.setString(1, files.getFile_id());
-			s.setString(2, files.getFile_name());
-			s.setString(3, files.getCommit_id());
-			s.setString(4, "");
-			s.execute();
-		}
-		catch (SQLException e)
-		{
-			return false;
-		}
-		return true;
-	}
-		
 	public boolean InsertFileDiff(FileDiffsTO diff)
 	{
 		try { 
