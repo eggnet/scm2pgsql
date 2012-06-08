@@ -78,7 +78,7 @@ public class GitParser {
 			.build();
 		git = new Git(repoFile);
 		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
-		db.connect("");
+		db.connect(Resources.EGGNET_DB_NAME);
 		db.createDB(repoName);
 		File log = new File("err.log");
 		log.createNewFile();

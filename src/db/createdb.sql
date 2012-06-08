@@ -59,8 +59,6 @@ CREATE SEQUENCE commits_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.commits_id_seq OWNER TO postgres;
-
 --
 -- Name: commits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -81,8 +79,6 @@ CREATE TABLE files (
 );
 
 
-ALTER TABLE public.files OWNER TO postgres;
-
 --
 -- Name: files_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
@@ -94,8 +90,6 @@ CREATE SEQUENCE files_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.files_id_seq OWNER TO postgres;
 
 --
 -- Name: files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -123,8 +117,6 @@ ALTER TABLE ONLY files ALTER COLUMN id SET DEFAULT nextval('files_id_seq'::regcl
 --
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON SCHEMA public FROM postgres;
-GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 CREATE TABLE branches (
@@ -153,7 +145,6 @@ CREATE TABLE IF NOT EXISTS file_diffs (
 	char_end integer NOT NULL,
 	diff_type character varying (30)
 );
-ALTER TABLE public.file_diffs OWNER TO postgres;
 
 CREATE TABLE networks (
 	new_commit_id varchar(255),
@@ -168,8 +159,6 @@ CREATE SEQUENCE networks_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.networks_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE networks_id_seq OWNED BY networks.network_id;
 

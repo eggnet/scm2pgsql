@@ -2,6 +2,8 @@ package db;
 
 import git.BlameResultRecord;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -196,8 +198,11 @@ public class GitDb extends DbConnection
 			// Reconnect to our new database.
 			connect(dbName.toLowerCase());
 			
+			// load our schema
+			BufferedReader in = new BufferedReader(new FileReader("src/db/createdb.sql")); 
+
 			// Now load our default schema in.
-			sr.runScript(new InputStreamReader(this.getClass().getResourceAsStream("createdb.sql")));
+			sr.runScript(in);
 			
 			//--------------------------------------------------------------------------------------
 			// Stored procedure for checking before inserting in a batch.											
