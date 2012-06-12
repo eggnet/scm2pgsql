@@ -324,39 +324,74 @@ public class GitParser {
 	{
 		for (DiffEntry d : diffs)
 		{
-			if (GitResources.JAVA_ONLY && !d.getNewPath().endsWith(".java"))
-				continue;
-			FilesTO currentFile = new FilesTO();
+			String newPathName = d.getNewPath();
+			String oldPathName = d.getOldPath();
 			
-			// Not delete, store the raw file
-			if (d.getChangeType() != DiffEntry.ChangeType.DELETE) {
+			if (GitResources.JAVA_ONLY)
+			{ 
+				if(newPathName.equals("/dev/null") && !oldPathName.endsWith(".java"))
+					continue;
+				if(oldPathName.equals("/dev/null") && !newPathName.endsWith(".java"))
+					continue;
+			}
+
+			FilesTO currentFile = new FilesTO();
+			if (d.getChangeType() == DiffEntry.ChangeType.COPY)
+			{
 				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
 				String newText = new String(b, "UTF-8");
-				currentFile.setRaw_file(newText);
 				
-				// Get previous rawfile
-				if(d.getChangeType() != DiffEntry.ChangeType.ADD)
-				{
-					b = repoFile.open(d.getOldId().toObjectId(), OBJ_BLOB).getCachedBytes();
-					String oldText = new String(b, "UTF-8");
-					parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommit.getCommit_id(), oldText, newText, d.getNewPath());
-				}
-				else
-				{
-					// add empty text as the old version
-					FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), newText, 0, newText.length(), diff_types.DIFF_ADD);
-					db.InsertFileDiff(filediff);
-				}
-			}
-			currentFile.setCommit_id(currentCommit.getCommit_id());				
-			
-			// Set file path: deleted file with old commit; new or modified file with new commit 
-			if (d.getChangeType() == DiffEntry.ChangeType.DELETE)
-				currentFile.setFile_id(d.getOldPath());
-			else 
+				FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), newText, 0, newText.length(), diff_types.DIFF_COPY);
+				db.InsertFileDiff(filediff);
+				currentFile.setRaw_file(newText);
 				currentFile.setFile_id(d.getNewPath());
+			}
+			else
+			if (d.getChangeType() == DiffEntry.ChangeType.RENAME)
+			{
+				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
+				String newText = new String(b, "UTF-8");
+				
+				FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), newText, 0, newText.length(), diff_types.DIFF_RENAME);
+				db.InsertFileDiff(filediff);
+				currentFile.setRaw_file(newText);
+				currentFile.setFile_id(d.getNewPath());
+			}
+			else
+			if (d.getChangeType() == DiffEntry.ChangeType.DELETE)
+			{
+				FileDiffsTO filediff = new FileDiffsTO(d.getOldPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), "", 0, 0, diff_types.DIFF_DELETE);
+				db.InsertFileDiff(filediff);
+				currentFile.setRaw_file("");
+				currentFile.setFile_id(d.getOldPath());
+			}
+			else
+			if (d.getChangeType() == DiffEntry.ChangeType.ADD)
+			{
+				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
+				String newText = new String(b, "UTF-8");
+				// add empty text as the old version
+				FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), newText, 0, newText.length(), diff_types.DIFF_ADD);
+				db.InsertFileDiff(filediff);
+				currentFile.setRaw_file(newText);
+				currentFile.setFile_id(d.getNewPath());
+			}
+			else
+			if (d.getChangeType() == DiffEntry.ChangeType.MODIFY)
+			{
+				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
+				String newText = new String(b, "UTF-8");
+				
+				// Compare two files, store diffs
+				b = repoFile.open(d.getOldId().toObjectId(), OBJ_BLOB).getCachedBytes();
+				String oldText = new String(b, "UTF-8");
+				parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommit.getCommit_id(), oldText, newText, d.getNewPath());
+				currentFile.setRaw_file(newText);
+				currentFile.setFile_id(d.getNewPath());
+			}
 			
-			// Set file name
+			// Set up FileObject
+			currentFile.setCommit_id(currentCommit.getCommit_id());				
 			currentFile.setFile_name(d.getNewPath().substring(
 					d.getNewPath().lastIndexOf(File.separatorChar) != -1 ? 
 							d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
