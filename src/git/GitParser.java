@@ -188,6 +188,10 @@ public class GitParser {
 			currentFile.setRaw_file(newText);
 			currentFile.setFile_name(initialCommit.getNameString());
 			
+			// insert to file_diffs table as DIFF_ADD
+			FileDiffsTO filediff = new FileDiffsTO(initialCommit.getPathString(), commit.getId().getName(), "", newText, 0, newText.length(), diff_types.DIFF_ADD);
+			db.InsertFileDiff(filediff);
+			
 			// insert Change entry and update Ownership
 			db.InsertChangeEntry(commit.getId().getName(), initialCommit.getPathString(), ChangeType.ADD);
 			updateOwnership(currentCommit, currentFile, ChangeType.ADD);
