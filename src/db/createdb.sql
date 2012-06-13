@@ -85,17 +85,6 @@ CREATE TABLE branches (
     commit_id character varying(255)
 );
 
-CREATE TABLE changes (
-	commit_id character varying (255),
-	file_id character varying (255),
-	change_type character varying(10)
-);
-
-CREATE TABLE source_trees (
-	commit_id character varying(255),
-	file_id character varying(255)
-);
-
 CREATE TABLE IF NOT EXISTS file_diffs (
 	file_id character varying(255) NOT NULL,
 	new_commit_id character varying(255) NOT NULL,

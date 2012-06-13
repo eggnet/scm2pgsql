@@ -192,10 +192,8 @@ public class GitParser {
 			FileDiffsTO filediff = new FileDiffsTO(initialCommit.getPathString(), commit.getId().getName(), "", newText, 0, newText.length(), diff_types.DIFF_ADD);
 			db.InsertFileDiff(filediff);
 			
-			// insert Change entry and update Ownership
-			db.InsertChangeEntry(commit.getId().getName(), initialCommit.getPathString(), ChangeType.ADD);
+			// update Ownership
 			updateOwnership(currentCommit, currentFile, ChangeType.ADD);
-			db.InsertFileTreeEntry(currentCommit.getCommit_id(), initialCommit.getPathString());
 		}
 		db.execBatch();
 		
@@ -244,9 +242,6 @@ public class GitParser {
 		
 		System.out.println("Doing commit " + currentCommitTO.getCommit_id() + " at date " + currentCommitTO.getCommit_date()); 
 		
-		// Insert file tree entries
-		insertCurrentCommitFileTree(currentCommit);
-		
 		// insert children
 		for (int i = 0;i < currentCommit.getChildCount();i++)
 		{
@@ -288,29 +283,6 @@ public class GitParser {
 		
 	}
 
-	/**
-	 * For current commit revision, insert all the source file exist in it
-	 * @throws IOException 
-	 * @throws CorruptObjectException 
-	 * @throws IncorrectObjectTypeException 
-	 * @throws MissingObjectException 
-	 */
-	public void insertCurrentCommitFileTree(PlotCommit currentCommit) throws MissingObjectException, IncorrectObjectTypeException, CorruptObjectException, IOException
-	{
-		// Insert file tree entries
-		TreeWalk structure = new TreeWalk(repoFile);
-		structure.addTree(currentCommit.getTree());
-		structure.setRecursive(true);
-		
-		if (GitResources.JAVA_ONLY)
-			structure.setFilter(PathSuffixFilter.create(".java"));
-		
-		while(structure.next())
-			db.InsertFileTreeEntry(currentCommit.getId().getName(), structure.getPathString());
-		
-		db.execBatch();
-	}
-	
 	/** 
 	 * @Triet
 	 * 1. Get 2 source files, compare them and put into file_diffs
@@ -401,8 +373,7 @@ public class GitParser {
 							d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
 								0, d.getNewPath().length()));
 			
-			// Changes entry and update Ownership
-			db.InsertChangeEntry(currentCommit.getCommit_id(), currentFile.getFile_id(), d.getChangeType());
+			// update Ownership
 			updateOwnership(currentCommit, currentFile, d.getChangeType());
 		}
 	}

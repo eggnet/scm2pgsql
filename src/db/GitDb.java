@@ -103,43 +103,6 @@ public class GitDb extends DbConnection
 		return true;
 	}
 	
-	public boolean InsertChangeEntry(String commitId, String fileId, DiffEntry.ChangeType type)
-	{
-		try { 
-			PreparedStatement s = conn.prepareStatement(
-					"INSERT INTO changes (commit_id, file_id, change_type)" +
-					" VALUES(?, ?, ?);");
-			s.setString(1, commitId);
-			s.setString(2, fileId);
-			s.setString(3, type.toString());
-			currentBatch.addBatch(s.toString());
-			return true;
-		}
-		catch (SQLException e)
-		{
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
-	public boolean InsertFileTreeEntry(String commitId, String fileId)
-	{
-		try { 
-			PreparedStatement s = conn.prepareStatement(
-					"INSERT INTO source_trees (commit_id, file_id)" +
-					" VALUES(?, ?)");
-			s.setString(1, commitId);
-			s.setString(2, fileId);
-			currentBatch.addBatch(s.toString());
-			return true;
-		}
-		catch (SQLException e)
-		{
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
 	public void insertOwnerRecord(BlameResultRecord rec)
 	{
 		try
