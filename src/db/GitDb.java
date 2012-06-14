@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revplot.PlotCommit;
 
+import scm2pgsql.GitResources;
+
 public class GitDb extends DbConnection
 {
 	public boolean connect(String dbName)
@@ -132,10 +134,11 @@ public class GitDb extends DbConnection
 		PreparedStatement s;
 		try {
 			// Drop the DB if it already exists
-			s = conn.prepareStatement("DROP DATABASE IF EXISTS " + dbName + ";");
+			s = conn.prepareStatement("DROP DATABASE IF EXISTS " + dbName);
 			s.execute();
+			
 			// First create the DB.
-			s = conn.prepareStatement("CREATE DATABASE " + dbName + ";");
+			s = conn.prepareStatement("CREATE DATABASE " + dbName);
 
 			s.execute();
 			
@@ -143,11 +146,7 @@ public class GitDb extends DbConnection
 			connect(dbName.toLowerCase());
 			
 			// load our schema
-			BufferedReader in = new BufferedReader(new FileReader("src/db/createdb.sql")); 
-
-			// Now load our default schema in.
-			sr.runScript(in);
-			
+			sr.runScript(new InputStreamReader(GitResources.class.getResourceAsStream("createdb.sql")));
 			//--------------------------------------------------------------------------------------
 			// Stored procedure for checking before inserting in a batch.											
 			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			

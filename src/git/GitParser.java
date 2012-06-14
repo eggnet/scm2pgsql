@@ -79,6 +79,13 @@ public class GitParser {
 		git = new Git(repoFile);
 		String repoName = gitDir.substring(gitDir.lastIndexOf(File.separator)+1);
 		db.connect(Resources.EGGNET_DB_NAME);
+		
+		if (repoName.endsWith("/"))
+		{
+			// Chop off the trailing slash
+			repoName = repoName.substring(0, repoName.length()-1);
+		}
+		
 		db.createDB(repoName);
 		File log = new File("err.log");
 		log.createNewFile();
@@ -258,12 +265,12 @@ public class GitParser {
 			oldTreeIter.reset(reader, prevCommitTree);
 			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
-			List<DiffEntry> diffs = git.diff().setOutputStream(logger).setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
+			List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
 			System.out.println("Number of changed files: " + diffs.size());
 			
 			// Get Plot commit for children
-			PlotCommit childCommit = getPlotCommit(childId);
+			PlotCommit<PlotLane> childCommit = getPlotCommit(childId);
 			if(childCommit == null)
 				continue;
 			
