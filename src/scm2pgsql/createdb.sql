@@ -12,9 +12,6 @@ SET client_min_messages = warning;
 -- Name: scm2pgsql; Type: COMMENT; Schema: -; Owner: postgres
 --
 
-COMMENT ON DATABASE scm2pgsql IS 'This database will house the SCM information of users, changes etc.';
-
-
 --
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
