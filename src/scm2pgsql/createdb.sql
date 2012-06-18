@@ -137,5 +137,6 @@ CREATE TABLE IF NOT EXISTS owners (
 
 CREATE TABLE IF NOT EXISTS commit_family (
 	parent character varying(255) NOT NULL,
-	child character varying(255) NOT NULL
+	child character varying(255) NOT NULL,
+	PRIMARY KEY(parent, child)
 );	
