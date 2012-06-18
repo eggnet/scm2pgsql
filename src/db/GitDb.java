@@ -138,8 +138,11 @@ public class GitDb extends DbConnection
 			s.execute();
 			
 			// First create the DB.
-			s = conn.prepareStatement("CREATE DATABASE " + dbName + " ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';");
-
+			if (GitResources.SET_ENC)
+				s = conn.prepareStatement("CREATE DATABASE " + dbName + " ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';");
+			else
+				s = conn.prepareStatement("CREATE DATABASE " + dbName);
+			
 			s.execute();
 			
 			// Reconnect to our new database.

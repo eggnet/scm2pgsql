@@ -20,7 +20,7 @@ public class Main {
 			{
 				try 
 				{
-					if (args.length == 2) GitResources.JAVA_ONLY = Boolean.parseBoolean(args[1]);
+					if (args.length > 1) GitResources.SET_ENC = Boolean.parseBoolean(args[1]);
 					gitParser.parseRepo(args[0]);
 				} 
 				catch (MissingObjectException e) 
@@ -29,7 +29,7 @@ public class Main {
 				} 
 				catch (IOException e) 
 				{
-					e.printStackTrace();
+					e.printStackTrace(); 
 				}
 			}
 		}
