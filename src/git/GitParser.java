@@ -310,11 +310,10 @@ public class GitParser {
 			String newPathName = d.getNewPath();
 			String oldPathName = d.getOldPath();
 			
+			// skip non-java file
 			if (GitResources.JAVA_ONLY)
 			{ 
-				if(newPathName.equals("/dev/null") && !oldPathName.endsWith(".java"))
-					continue;
-				if(oldPathName.equals("/dev/null") && !newPathName.endsWith(".java"))
+				if(!(newPathName.endsWith(".java") || oldPathName.endsWith(".java")))
 					continue;
 			}
 
