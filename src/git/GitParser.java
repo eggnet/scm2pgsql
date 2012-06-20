@@ -6,9 +6,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jgit.api.Git;
@@ -66,7 +68,7 @@ public class GitParser {
 	public GitDb db = new GitDb();
 	public Git git;
 	public PrintStream logger;
-	public PlotCommitList<PlotLane> plotCommitList = new PlotCommitList<PlotLane>();
+	public Map<String, PlotCommit> plotCommitMap;
 	public static ObjectId ROOT_COMMIT_ID;
 
 	private void initialize(String gitDir) throws IOException
@@ -110,11 +112,16 @@ public class GitParser {
 				revWalk.sort(RevSort.REVERSE);
 				AnyObjectId root = repoFile.resolve(Constants.HEAD);
 				revWalk.markStart(revWalk.parseCommit(root));
-				plotCommitList = new PlotCommitList<PlotLane>();
+				PlotCommitList<PlotLane> plotCommitList = new PlotCommitList<PlotLane>();
 				plotCommitList.source(revWalk);
 				plotCommitList.fillTo(Integer.MAX_VALUE);
+				
+				// Convert the list into hashmap
+				plotCommitMap =  new HashMap<String, PlotCommit>();
+				for(PlotCommit plotCom : plotCommitList)
+					plotCommitMap.put(plotCom.getId().getName(), plotCom);
+				
 				Iterator<PlotCommit<PlotLane>> iter = plotCommitList.iterator();
-
 				// Safety
 				if (!iter.hasNext())
 					return;
@@ -138,24 +145,6 @@ public class GitParser {
 		db.close();
 	}
 	
-	/**
-	 * get PlotCommit for the current Branch from CommitID
-	 * @param commitID
-	 * @return
-	 */
-	public PlotCommit<PlotLane> getPlotCommit(String commitID)
-	{
-		if(plotCommitList != null)
-		{
-			for(PlotCommit pc : plotCommitList)
-			{
-				if(pc.getId().getName().equals(commitID))
-					return pc;
-			}
-		}
-		
-		return null;
-	}
 	/**
 	 * parseFirstCommit
 	 * Parses the first commit in the walk. This is different because
@@ -249,35 +238,34 @@ public class GitParser {
 		
 		System.out.println("Doing commit " + currentCommitTO.getCommit_id() + " at date " + currentCommitTO.getCommit_date()); 
 		
+		// Set commit tree for Parent
+		String parentId = currentCommit.getName();
+		ObjectId prevCommitTree = repoFile.resolve(parentId + "^{tree}");
+		CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+		oldTreeIter.reset(reader, prevCommitTree);
+
 		// insert children
 		for (int i = 0;i < currentCommit.getChildCount();i++)
 		{
+			// Get Plot commit for children
 			String childId  = currentCommit.getChild(i).getName();
-			String parentId = currentCommit.getName();
+			PlotCommit<PlotLane> childCommit = plotCommitMap.get(childId);
+			if(childCommit == null)
+				continue;
+			
+			// commit_family
 			db.insertCommitFamilyEntry(childId, parentId);
 			
-			// For each pair of parent and child, insert diffs file
-			// Store previous commit and Diff the commits and parse the files.
+			// Get commit tree for child, compare the two trees to get list of changed files
 			ObjectId currentCommitTree = repoFile.resolve(childId  + "^{tree}");
-			ObjectId prevCommitTree    = repoFile.resolve(parentId + "^{tree}");
-			
-			CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
 			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
-			oldTreeIter.reset(reader, prevCommitTree);
 			List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
 			System.out.println("Number of changed files: " + diffs.size());
 			
-			// Get Plot commit for children
-			PlotCommit<PlotLane> childCommit = getPlotCommit(childId);
-			if(childCommit == null)
-				continue;
-			
-			// Insert diffs object
+			// setup childCommit for parse diffs
 			CommitsTO childCommitTO = new CommitsTO();
-
-			// setup values for transfer objects
 			childCommitTO.setAuthor		 (childCommit.getAuthorIdent().getName());
 			childCommitTO.setAuthor_email(childCommit.getAuthorIdent().getEmailAddress());
 			childCommitTO.setCommit_id	 (childCommit.getId().getName());
