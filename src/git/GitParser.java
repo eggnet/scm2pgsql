@@ -72,7 +72,7 @@ public class GitParser {
 	private void initialize(String gitDir) throws IOException
 	{
 		repoDir = new File(gitDir + "/.git");
-		repoFile = new RepositoryBuilder() //
+		repoFile = new RepositoryBuilder()
 			.setGitDir(repoDir)
 			.findGitDir()
 			.build();
@@ -127,9 +127,7 @@ public class GitParser {
 				while(iter.hasNext())
 				{
 					pc = iter.next();
-					System.out.println(new Date().getTime());
 					parseCommit(pc, branch);
-					System.out.println(new Date().getTime());
 				}
 			}
 			catch (Exception e)
@@ -159,9 +157,14 @@ public class GitParser {
 		return null;
 	}
 	/**
-	 * Parses the final commit in the walk.  This is different because
+	 * parseFirstCommit
+	 * Parses the first commit in the walk. This is different because
 	 * there is no longer a notion of 'diffing', just adding all files 
 	 * as changed.
+	 * 1. For each file
+	 * 		Insert file_diffs entry as DIFF_ADD
+	 * 		Update onwership
+	 * 2. ParseCommit as normal to go through all the children
 	 * @param commit
 	 * @param branch
 	 * @throws GitAPIException
@@ -178,21 +181,21 @@ public class GitParser {
 			initialCommit.setFilter(PathSuffixFilter.create(".java"));
 
 		CommitsTO currentCommit = new CommitsTO();
-		currentCommit.setAuthor(commit.getAuthorIdent().getName());
+		currentCommit.setAuthor		 (commit.getAuthorIdent().getName());
 		currentCommit.setAuthor_email(commit.getAuthorIdent().getEmailAddress());
-		currentCommit.setCommit_id(commit.getId().getName());
-		currentCommit.setComment(commit.getFullMessage());
-		currentCommit.setCommit_date(new Date(commit.getCommitTime() * 1000L));
+		currentCommit.setCommit_id	 (commit.getId().getName());
+		currentCommit.setComment	 (commit.getFullMessage());
+		currentCommit.setCommit_date (new Date(commit.getCommitTime() * 1000L));
 		
-		// Insert Diff as ADD objects for first commit.
+		// For each file, insert DIFF_ADD to file_diffs and update ownership.
 		while(initialCommit.next())
 		{
 			FilesTO currentFile = new FilesTO();
 			byte[] b = repoFile.open(initialCommit.getObjectId(0).toObjectId(), OBJ_BLOB).getCachedBytes();
 			String newText = new String(b, "UTF-8");
 			currentFile.setCommit_id(commit.getId().getName());				
-			currentFile.setFile_id(initialCommit.getPathString());
-			currentFile.setRaw_file(newText);
+			currentFile.setFile_id	(initialCommit.getPathString());
+			currentFile.setRaw_file	(newText);
 			currentFile.setFile_name(initialCommit.getNameString());
 			
 			// insert to file_diffs table as DIFF_ADD
@@ -209,18 +212,15 @@ public class GitParser {
 	}
 	
 	/**
-	 * Parses a given commit into the database.
-	 * 		1. Insert CommitTO - commit info
-	 * 		2. Insert BranchentryTo - (branch,commit)
-	 * 		3. Insert File tree entries
-	 * 		4. For each children commit
-	 * 			 1. Insert FamilyCommitEntry (Parent, Child)
-	 * 			 2. Diff Parent and child
-	 * 				   1.Insert diffEntry
-	 * 				   2.Update ownership for the files
-	 *				   3.Insert ChangeEntry in Changes	 
+	 * Parses a given commit:
+	 * 		1. Insert it to Commits table
+	 * 		2. Insert it to Branches - (branch,commit)
+	 * 		3. For each children commit
+	 * 			 1. Insert it to Commit_family - (Parent, Child)
+	 * 			 2. For each File change
+	 * 			 	   1.Insert the changes to file_diffs (between parent and child)
+	 * 				   2.Update ownership for the file
 	 * @param currentCommit
-	 * @param nextCommit
 	 * @param branch
 	 * @throws GitAPIException
 	 * @throws IOException
@@ -228,23 +228,23 @@ public class GitParser {
 	public void parseCommit(PlotCommit currentCommit, Ref branch) throws GitAPIException, IOException
 	{
 		// initialize transfer objects
-		CommitsTO 		 currentCommitTO = new CommitsTO();
+		CommitsTO currentCommitTO = new CommitsTO();
 		ObjectReader reader = repoFile.newObjectReader();
 
 		// setup values for transfer objects
-		currentCommitTO.setAuthor(currentCommit.getAuthorIdent().getName());
-		currentCommitTO.setAuthor_email(currentCommit.getAuthorIdent().getEmailAddress());
-		currentCommitTO.setCommit_id(currentCommit.getId().getName());
-		currentCommitTO.setComment(currentCommit.getFullMessage());
-		currentCommitTO.setCommit_date(new Date(currentCommit.getCommitTime() * 1000L));
-		currentCommitTO.setBranch_id(branch.getObjectId().getName());
+		currentCommitTO.setAuthor		(currentCommit.getAuthorIdent().getName());
+		currentCommitTO.setAuthor_email (currentCommit.getAuthorIdent().getEmailAddress());
+		currentCommitTO.setCommit_id	(currentCommit.getId().getName());
+		currentCommitTO.setComment		(currentCommit.getFullMessage());
+		currentCommitTO.setCommit_date	(new Date(currentCommit.getCommitTime() * 1000L));
+		currentCommitTO.setBranch_id	(branch.getObjectId().getName());
 		db.InsertCommit(currentCommitTO);
 		
 		// BranchEntry
 		BranchEntryTO currentBranchEntry = new BranchEntryTO();
-		currentBranchEntry.setBranch_id(branch.getObjectId().getName());
+		currentBranchEntry.setBranch_id	 (branch.getObjectId().getName());
 		currentBranchEntry.setBranch_name(branch.getName());
-		currentBranchEntry.setCommit_id(currentCommitTO.getCommit_id());
+		currentBranchEntry.setCommit_id	 (currentCommitTO.getCommit_id());
 		db.InsertBranchEntry(currentBranchEntry);
 		
 		System.out.println("Doing commit " + currentCommitTO.getCommit_id() + " at date " + currentCommitTO.getCommit_date()); 
@@ -258,13 +258,13 @@ public class GitParser {
 			
 			// For each pair of parent and child, insert diffs file
 			// Store previous commit and Diff the commits and parse the files.
-			ObjectId currentCommitTree = repoFile.resolve(childId + "^{tree}");
+			ObjectId currentCommitTree = repoFile.resolve(childId  + "^{tree}");
 			ObjectId prevCommitTree    = repoFile.resolve(parentId + "^{tree}");
 			
 			CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
-			oldTreeIter.reset(reader, prevCommitTree);
 			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
+			oldTreeIter.reset(reader, prevCommitTree);
 			List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
 			System.out.println("Number of changed files: " + diffs.size());
@@ -290,21 +290,22 @@ public class GitParser {
 		
 	}
 
-	/** 
-	 * @Triet
-	 * 1. Get 2 source files, compare them and put into file_diffs
-	 * 2. Insert changeEntry - Need to update Changes table to have OldCommitID or sack it
-	 * 3. Update ownership for This Parent and Child relationship
-	 * 
+	/**
 	 * Function to parse the diffs from a specific commit.
-	 * @author braden
+	 * For each file
+	 * 1. Compare the file between two commits and put them into file_diffs
+	 * 2. Update ownership
+	 * 
+	 * @author braden, Infiro
 	 * @param currentCommit
-	 * @param diffs
+	 * @param prevCommit
+	 * @param diffs - list of FILES that are different between two commits (not the diff object)
 	 * @throws MissingObjectException
 	 * @throws IOException
 	 */
 	public void parseDiffs(CommitsTO currentCommit, CommitsTO prevCommit, List<DiffEntry> diffs) throws MissingObjectException, IOException  
 	{
+		// For each file
 		for (DiffEntry d : diffs)
 		{
 			String newPathName = d.getNewPath();
@@ -317,6 +318,7 @@ public class GitParser {
 					continue;
 			}
 
+			// Insert to file_diffs based on change type
 			FilesTO currentFile = new FilesTO();
 			if (d.getChangeType() == DiffEntry.ChangeType.COPY)
 			{
@@ -352,40 +354,43 @@ public class GitParser {
 			{
 				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
 				String newText = new String(b, "UTF-8");
-				// add empty text as the old version
+				
 				FileDiffsTO filediff = new FileDiffsTO(d.getNewPath(), currentCommit.getCommit_id(), prevCommit.getCommit_id(), newText, 0, newText.length(), diff_types.DIFF_ADD);
 				db.InsertFileDiff(filediff);
 				currentFile.setRaw_file(newText);
 				currentFile.setFile_id(d.getNewPath());
 			}
-			else
+			else // File changed, compare two files
 			if (d.getChangeType() == DiffEntry.ChangeType.MODIFY)
 			{
 				byte[] b = repoFile.open(d.getNewId().toObjectId(), OBJ_BLOB).getCachedBytes();
 				String newText = new String(b, "UTF-8");
 				
-				// Compare two files, store diffs
 				b = repoFile.open(d.getOldId().toObjectId(), OBJ_BLOB).getCachedBytes();
 				String oldText = new String(b, "UTF-8");
+				
 				parseFileDiffByDiffer(currentCommit.getCommit_id(), prevCommit.getCommit_id(), oldText, newText, d.getNewPath());
+				
 				currentFile.setRaw_file(newText);
 				currentFile.setFile_id(d.getNewPath());
 			}
 			
-			// Set up FileObject
-			currentFile.setCommit_id(currentCommit.getCommit_id());				
-			currentFile.setFile_name(d.getNewPath().substring(
-					d.getNewPath().lastIndexOf(File.separatorChar) != -1 ? 
-							d.getNewPath().lastIndexOf(File.separatorChar)+1 : 
-								0, d.getNewPath().length()));
+			// Update ownership
+			currentFile.setCommit_id(currentCommit.getCommit_id());
+			String newFilePath = d.getNewPath();
+			currentFile.setFile_name(d.getNewPath().substring(newFilePath.lastIndexOf(File.separatorChar) != -1 ? newFilePath.lastIndexOf(File.separatorChar)+1 :	0,
+															  newFilePath.length()));
 			
-			// update Ownership
 			updateOwnership(currentCommit, currentFile, d.getChangeType());
 		}
 	}
 	
 	/**
-	 * Diff two version of the file and store the diff into file_diffs table
+	 * @author Infiro
+	 * Diff file from two commits
+	 * Store the diffs into file_diffs
+	 * Note: the end index is actually off by 1 char. For example, if insert.end is 10, the really end index is 9.
+	 * This is on purpose, do not change it
 	 */
 	public void parseFileDiffByDiffer(String currentCommit, String prevCommit, String oldRawFile, String newRawFile, String fileID) throws MissingObjectException, IOException 
 	{
@@ -425,11 +430,11 @@ public class GitParser {
 		if (change == ChangeType.DELETE)
 		{
 			rec = new BlameResultRecord();
-			rec.setAuthorId(currentCommit.getAuthor_email());
-			rec.setCommitId(currentCommit.getCommit_id());
+			rec.setAuthorId		 (currentCommit.getAuthor_email());
+			rec.setCommitId		 (currentCommit.getCommit_id());
 			rec.setSourceCommitId(currentCommit.getCommit_id());
-			rec.setFileId(currentFile.getFile_id());
-			rec.setLineEnd(-1);
+			rec.setFileId		 (currentFile.getFile_id());
+			rec.setLineEnd  (-1);
 			rec.setLineStart(-1);
 			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
 			db.insertOwnerRecord(rec);
@@ -441,18 +446,22 @@ public class GitParser {
 		bg.push(null, repoFile.resolve(currentCommit.getCommit_id()));
 		bg.setFollowFileRenames(true);
 		BlameResult blameRes = bg.computeBlameResult();
+		
+		// For each line in the file
 		for(int i = 0;i < blameRes.getResultContents().size();i++)
 		{
 			PersonIdent sourceAuthor = blameRes.getSourceAuthor(i);
 			if (sourceAuthor == null)
+			{
 				continue;	// safety
+			}
 			else if (rec == null)
 			{
 				rec = new BlameResultRecord();
-				rec.setAuthorId(sourceAuthor.getEmailAddress());
+				rec.setAuthorId		 (sourceAuthor.getEmailAddress());
 				rec.setSourceCommitId(blameRes.getSourceCommit(i).getName());
-				rec.setFileId(currentFile.getFile_id());
-				rec.setCommitId(currentCommit.getCommit_id());
+				rec.setFileId		 (currentFile.getFile_id());
+				rec.setCommitId		 (currentCommit.getCommit_id());
 				rec.setLineStart(i+1);
 			}
 			else if (!rec.getAuthorId().equals(sourceAuthor.getEmailAddress()))
@@ -463,27 +472,32 @@ public class GitParser {
 				
 				// Convert from line -> char
 				rec.setLineStart(Resources.convertLineStartToCharStart(rec.getLineStart(), currentFile.getRaw_file()));
-				rec.setLineEnd(Resources.convertLineEndToCharEnd(rec.getLineEnd(), currentFile.getRaw_file()));
+				rec.setLineEnd	(Resources.convertLineEndToCharEnd	  (rec.getLineEnd()  , currentFile.getRaw_file()));
 				db.insertOwnerRecord(rec);
 				
 				// we have a new owner
 				rec = new BlameResultRecord();
-				rec.setAuthorId(sourceAuthor.getEmailAddress());
+				rec.setAuthorId		 (sourceAuthor.getEmailAddress());
 				rec.setSourceCommitId(blameRes.getSourceCommit(i).getName());
-				rec.setFileId(currentFile.getFile_id());
-				rec.setCommitId(currentCommit.getCommit_id());
+				rec.setFileId		 (currentFile.getFile_id());
+				rec.setCommitId		 (currentCommit.getCommit_id());
 				rec.setLineStart(i+1);
 			}
 			else if (rec.getAuthorId().equals(sourceAuthor.getEmailAddress()))
-				rec.setLineEnd(i+1); 				// we have the same owner
+			{
+				// we have the same owner
+				rec.setLineEnd(i+1); 				
+			}
 		}
+		
+		// Insert the last record
 		if (rec != null)
 		{
 			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
 			
 			// Convert from line -> char
 			rec.setLineStart(Resources.convertLineStartToCharStart(rec.getLineStart(), currentFile.getRaw_file()));
-			rec.setLineEnd(Resources.convertLineEndToCharEnd(rec.getLineEnd(), currentFile.getRaw_file()));
+			rec.setLineEnd  (Resources.convertLineEndToCharEnd    (rec.getLineEnd()  , currentFile.getRaw_file()));
 			db.insertOwnerRecord(rec);
 		}
 		db.execCallableBatch();
