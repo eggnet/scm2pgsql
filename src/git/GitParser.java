@@ -275,15 +275,15 @@ public class GitParser {
 		
 		System.out.println("Doing commit " + currentCommitTO.getCommit_id() + " at date " + currentCommitTO.getCommit_date()); 
 		
-		// Set commit tree for Parent
-		String parentId = currentCommit.getName();
-		ObjectId prevCommitTree = repoFile.resolve(parentId + "^{tree}");
-		CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
-		oldTreeIter.reset(reader, prevCommitTree);
-
 		// insert children
 		for (int i = 0;i < currentCommit.getChildCount();i++)
 		{
+			// Set commit tree for Parent
+			String parentId = currentCommit.getName();
+			ObjectId prevCommitTree = repoFile.resolve(parentId + "^{tree}");
+			CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+			oldTreeIter.reset(reader, prevCommitTree);
+			
 			// Get Plot commit for children
 			String childId  = currentCommit.getChild(i).getName();
 			PlotCommit<PlotLane> childCommit = plotCommitMap.get(childId);
