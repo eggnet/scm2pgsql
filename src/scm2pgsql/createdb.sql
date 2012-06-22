@@ -140,3 +140,9 @@ CREATE TABLE IF NOT EXISTS commit_family (
 	child character varying(255) NOT NULL,
 	PRIMARY KEY(parent, child)
 );	
+
+CREATE TABLE IF NOT EXISTS file_caches (
+    commit_id character varying(255),
+    file_id character varying(255),
+    raw_file text
+);

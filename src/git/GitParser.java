@@ -70,6 +70,7 @@ public class GitParser {
 	public PrintStream logger;
 	public Map<String, PlotCommit> plotCommitMap;
 	public static ObjectId ROOT_COMMIT_ID;
+	public static int CACHE_RAWFILE_THRESHOLD;
 
 	private void initialize(String gitDir) throws IOException
 	{
@@ -92,11 +93,15 @@ public class GitParser {
 		File log = new File("err.log");
 		log.createNewFile();
 		logger = new PrintStream(log);
+		
+		this.CACHE_RAWFILE_THRESHOLD = 100;
 	}
 	
 	public void parseRepo(String gitDir) throws MissingObjectException, IOException
 	{
 		initialize(gitDir);
+		int commitCounter = 0;
+
 		// Setup branches 
 		List<Ref> branches = git.branchList().call();
 		for (Ref branch : branches)
@@ -135,6 +140,11 @@ public class GitParser {
 				{
 					pc = iter.next();
 					parseCommit(pc, branch);
+					
+					//Every 100 commits, cached all raw files
+					if(commitCounter % CACHE_RAWFILE_THRESHOLD == 0)
+						cacheRawFiles(pc, branch);
+					commitCounter++;
 				}
 			}
 			catch (Exception e)
@@ -143,6 +153,33 @@ public class GitParser {
 			}
 		}
 		db.close();
+	}
+	
+	public void cacheRawFiles(PlotCommit commit, Ref branch) throws GitAPIException, IOException
+	{
+		// Get all files in this commit
+		TreeWalk initialCommit = new TreeWalk(repoFile);
+		initialCommit.addTree(commit.getTree());
+		initialCommit.setRecursive(true);
+		
+		if (GitResources.JAVA_ONLY)
+			initialCommit.setFilter(PathSuffixFilter.create(".java"));
+
+		// For each file, insert raw file to file_caches.
+		while(initialCommit.next())
+		{
+			FilesTO currentFile = new FilesTO();
+			byte[] b = repoFile.open(initialCommit.getObjectId(0).toObjectId(), OBJ_BLOB).getCachedBytes();
+			String newText = new String(b, "UTF-8");
+			currentFile.setCommit_id(commit.getId().getName());				
+			currentFile.setFile_id	(initialCommit.getPathString());
+			currentFile.setRaw_file	(newText);
+			currentFile.setFile_name(initialCommit.getNameString());
+			
+			// insert to file_caches
+			db.InsertFiles(currentFile);
+		}
+		db.execBatch();
 	}
 	
 	/**

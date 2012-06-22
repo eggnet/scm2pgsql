@@ -148,4 +148,15 @@ public class GitDb extends DbConnection
 		PreparedStatementExecutionItem ei = new PreparedStatementExecutionItem(query, params);
 		addExecutionItem(ei);
 	}
+	
+	public void InsertFiles(FilesTO files)
+	 {
+		String query = "INSERT INTO file_caches (commit_id, file_id, raw_file) VALUES(?, ?, ?);";
+		ISetter[] params = {new StringSetter(1, files.getCommit_id()),
+							new StringSetter(2, files.getFile_id()),
+							new StringSetter(3, files.getRaw_file())};
+		
+		PreparedCallExecutionItem ei = new PreparedCallExecutionItem(query, params);
+		addExecutionItem(ei);
+	  }
 }
