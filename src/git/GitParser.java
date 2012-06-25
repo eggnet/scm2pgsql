@@ -38,6 +38,7 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
+import org.eclipse.jgit.util.io.NullOutputStream;
 
 import scm2pgsql.GitResources;
 import db.BranchEntryTO;
@@ -67,7 +68,7 @@ public class GitParser {
 	public Repository repoFile;
 	public GitDb db = new GitDb();
 	public Git git;
-	public PrintStream logger;
+	public NullOutputStream logger;
 	public Map<String, PlotCommit> plotCommitMap;
 	public static ObjectId ROOT_COMMIT_ID;
 	public static int CACHE_RAWFILE_THRESHOLD;
@@ -92,8 +93,7 @@ public class GitParser {
 		db.createDB(repoName);
 		File log = new File("err.log");
 		log.createNewFile();
-		logger = new PrintStream(log);
-		
+		logger = NullOutputStream.INSTANCE;	
 		this.CACHE_RAWFILE_THRESHOLD = 100;
 	}
 	
@@ -297,7 +297,7 @@ public class GitParser {
 			ObjectId currentCommitTree = repoFile.resolve(childId  + "^{tree}");
 			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
-			List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
+			List<DiffEntry> diffs = git.diff().setOutputStream(logger).setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
 			System.out.println("Number of changed files: " + diffs.size());
 			
