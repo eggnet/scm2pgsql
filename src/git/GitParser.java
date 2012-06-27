@@ -150,6 +150,8 @@ public class GitParser {
 			catch (Exception e)
 			{
 				e.printStackTrace();
+				System.out.println("Exception in commit: " + commitCounter);
+				return;
 			}
 		}
 		db.close();
