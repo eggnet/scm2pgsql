@@ -159,29 +159,39 @@ public class GitParser {
 	
 	public void cacheRawFiles(PlotCommit commit, Ref branch) throws GitAPIException, IOException
 	{
-		// Get all files in this commit
-		TreeWalk initialCommit = new TreeWalk(repoFile);
-		initialCommit.addTree(commit.getTree());
-		initialCommit.setRecursive(true);
-		
-		if (GitResources.JAVA_ONLY)
-			initialCommit.setFilter(PathSuffixFilter.create(".java"));
-
-		// For each file, insert raw file to file_caches.
-		while(initialCommit.next())
+		try
 		{
-			FilesTO currentFile = new FilesTO();
-			byte[] b = repoFile.open(initialCommit.getObjectId(0).toObjectId(), OBJ_BLOB).getCachedBytes();
-			String newText = new String(b, "UTF-8");
-			currentFile.setCommit_id(commit.getId().getName());				
-			currentFile.setFile_id	(initialCommit.getPathString());
-			currentFile.setRaw_file	(newText);
-			currentFile.setFile_name(initialCommit.getNameString());
 			
-			// insert to file_caches
-			db.InsertFiles(currentFile);
+			// Get all files in this commit
+			TreeWalk initialCommit = new TreeWalk(repoFile);
+			initialCommit.addTree(commit.getTree());
+			initialCommit.setRecursive(true);
+			
+			if (GitResources.JAVA_ONLY)
+				initialCommit.setFilter(PathSuffixFilter.create(".java"));
+	
+			// For each file, insert raw file to file_caches.
+			while(initialCommit.next())
+			{
+				FilesTO currentFile = new FilesTO();
+				byte[] b = repoFile.open(initialCommit.getObjectId(0).toObjectId(), OBJ_BLOB).getCachedBytes();
+				String newText = new String(b, "UTF-8");
+				currentFile.setCommit_id(commit.getId().getName());				
+				currentFile.setFile_id	(initialCommit.getPathString());
+				currentFile.setRaw_file	(newText);
+				currentFile.setFile_name(initialCommit.getNameString());
+				
+				// insert to file_caches
+				db.InsertFiles(currentFile);
+			}
+			db.execBatch();
 		}
-		db.execBatch();
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			System.out.println("Exception in saving RawFiles for commit: " + commit.getId().getName());
+			return;
+		}
 	}
 	
 	/**
