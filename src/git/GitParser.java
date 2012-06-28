@@ -157,16 +157,14 @@ public class GitParser {
 		db.close();
 	}
 	
-	public void cacheRawFiles(PlotCommit commit, Ref branch) throws GitAPIException, IOException
+	public void cacheRawFiles(PlotCommit commit, Ref branch)
 	{
-		try
+		try 
 		{
-			
 			// Get all files in this commit
 			TreeWalk initialCommit = new TreeWalk(repoFile);
 			initialCommit.addTree(commit.getTree());
 			initialCommit.setRecursive(true);
-			
 			if (GitResources.JAVA_ONLY)
 				initialCommit.setFilter(PathSuffixFilter.create(".java"));
 	
@@ -263,7 +261,7 @@ public class GitParser {
 	 * @throws GitAPIException
 	 * @throws IOException
 	 */
-	public void parseCommit(PlotCommit currentCommit, Ref branch) throws GitAPIException, IOException
+	public void parseCommit(PlotCommit<PlotLane> currentCommit, Ref branch) throws GitAPIException, IOException
 	{
 		// initialize transfer objects
 		CommitsTO currentCommitTO = new CommitsTO();
@@ -307,7 +305,7 @@ public class GitParser {
 			
 			// Get commit tree for child, compare the two trees to get list of changed files
 			ObjectId currentCommitTree = repoFile.resolve(childId  + "^{tree}");
-			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+			CanonicalTreeParser newTreeIter= new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
 			List<DiffEntry> diffs = git.diff().setOutputStream(logger).setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
