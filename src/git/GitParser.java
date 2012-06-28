@@ -260,7 +260,7 @@ public class GitParser {
 	 * @throws GitAPIException
 	 * @throws IOException
 	 */
-	public void parseCommit(PlotCommit currentCommit, Ref branch) throws GitAPIException, IOException
+	public void parseCommit(PlotCommit<PlotLane> currentCommit, Ref branch) throws GitAPIException, IOException
 	{
 		// initialize transfer objects
 		CommitsTO currentCommitTO = new CommitsTO();
@@ -304,7 +304,7 @@ public class GitParser {
 			
 			// Get commit tree for child, compare the two trees to get list of changed files
 			ObjectId currentCommitTree = repoFile.resolve(childId  + "^{tree}");
-			CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+			CanonicalTreeParser newTreeIter= new CanonicalTreeParser();
 			newTreeIter.reset(reader, currentCommitTree);
 			List<DiffEntry> diffs = git.diff().setOutputStream(logger).setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
 			
