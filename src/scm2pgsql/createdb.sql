@@ -12,22 +12,17 @@ SET client_min_messages = warning;
 -- Name: scm2pgsql; Type: COMMENT; Schema: -; Owner: postgres
 --
 
-COMMENT ON DATABASE scm2pgsql IS 'This database will house the SCM information of users, changes etc.';
-
-
 --
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
 CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
-
 --
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
 
 SET search_path = public, pg_catalog;
 
@@ -49,9 +44,6 @@ CREATE TABLE commits (
     branch_id character varying(255)
 );
 
-
-ALTER TABLE public.commits OWNER TO postgres;
-
 --
 -- Name: commits_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
@@ -64,8 +56,6 @@ CREATE SEQUENCE commits_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.commits_id_seq OWNER TO postgres;
-
 --
 -- Name: commits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -74,79 +64,22 @@ ALTER SEQUENCE commits_id_seq OWNED BY commits.id;
 
 
 --
--- Name: files; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
---
-
-CREATE TABLE files (
-    id integer NOT NULL,
-    file_id character varying(255),
-    file_name character varying(255),
-    commit_id character varying(255),
-    raw_file text
-);
-
-
-ALTER TABLE public.files OWNER TO postgres;
-
---
--- Name: files_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE files_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.files_id_seq OWNER TO postgres;
-
---
--- Name: files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE files_id_seq OWNED BY files.id;
-
-
---
 -- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY commits ALTER COLUMN id SET DEFAULT nextval('commits_id_seq'::regclass);
-
-
---
--- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY files ALTER COLUMN id SET DEFAULT nextval('files_id_seq'::regclass);
-
 
 --
 -- Name: public; Type: ACL; Schema: -; Owner: postgres
 --
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON SCHEMA public FROM postgres;
-GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 CREATE TABLE branches (
     branch_id character varying (255),
     branch_name character varying(100),
     commit_id character varying(255)
-);
-
-CREATE TABLE changes (
-	commit_id character varying (255),
-	file_id character varying (255),
-	change_type character varying(10)
-);
-
-CREATE TABLE source_trees (
-	commit_id character varying(255),
-	file_id character varying(255)
 );
 
 CREATE TABLE IF NOT EXISTS file_diffs (
@@ -158,7 +91,6 @@ CREATE TABLE IF NOT EXISTS file_diffs (
 	char_end integer NOT NULL,
 	diff_type character varying (30)
 );
-ALTER TABLE public.file_diffs OWNER TO postgres;
 
 CREATE TABLE networks (
 	new_commit_id varchar(255),
@@ -173,8 +105,6 @@ CREATE SEQUENCE networks_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.networks_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE networks_id_seq OWNED BY networks.network_id;
 
@@ -207,5 +137,12 @@ CREATE TABLE IF NOT EXISTS owners (
 
 CREATE TABLE IF NOT EXISTS commit_family (
 	parent character varying(255) NOT NULL,
-	child character varying(255) NOT NULL
+	child character varying(255) NOT NULL,
+	PRIMARY KEY(parent, child)
 );	
+
+CREATE TABLE IF NOT EXISTS file_caches (
+    commit_id character varying(255),
+    file_id character varying(255),
+    raw_file text
+);
