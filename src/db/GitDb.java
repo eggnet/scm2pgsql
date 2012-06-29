@@ -143,7 +143,7 @@ public class GitDb extends DbConnection
 	
 	public void insertCommitFamilyEntry(String commit, String parentCommit)
 	{
-		String query = "INSERT INTO commit_family (parent, child) VALUES(?, ?)";
+		String query = "INSERT INTO commit_family (parent, child) VALUES(?, ?);";
 		ISetter[] params = {new StringSetter(1,parentCommit), new StringSetter(2,commit)};
 		PreparedStatementExecutionItem ei = new PreparedStatementExecutionItem(query, params);
 		addExecutionItem(ei);
