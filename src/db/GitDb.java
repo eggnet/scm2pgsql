@@ -4,7 +4,6 @@ import git.BlameResultRecord;
 
 import java.io.InputStreamReader;
 
-import scm2pgsql.GitResources;
 
 import db.util.ISetter;
 import db.util.ISetter.StringSetter;
@@ -12,7 +11,7 @@ import db.util.ISetter.IntSetter;
 import db.util.PreparedCallExecutionItem;
 import db.util.PreparedStatementExecutionItem;
 
-public class GitDb extends DbConnection
+public class GitDb extends TechnicalDb
 {
 	public GitDb () {
 		super();
@@ -74,69 +73,6 @@ public class GitDb extends DbConnection
 		addExecutionItem(ei);
 	}			
 			
-	/**
-	 * Creates a db on the current connection.
-	 * @param dbName
-	 * @return true for success
-	 */
-	public boolean createDB(String dbName)
-	{
-		try {
-			// Drop the DB if it already exists
-			String query = "DROP DATABASE IF EXISTS " + dbName;
-			PreparedStatementExecutionItem ei = new PreparedStatementExecutionItem(query, null);
-			addExecutionItem(ei);
-			ei.waitUntilExecuted();
-			
-			// First create the DB.
-			if (GitResources.SET_ENC)
-				query = "CREATE DATABASE " + dbName + " ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';";
-			else
-				query = "CREATE DATABASE " + dbName;
-			ei = new PreparedStatementExecutionItem(query, null);
-			addExecutionItem(ei);
-			ei.waitUntilExecuted();
-			
-			// Reconnect to our new database.
-			close();
-			connect(dbName.toLowerCase());
-			
-			// load our schema			
-			runScript(new InputStreamReader(GitResources.class.getResourceAsStream("createdb.sql")));
-			//--------------------------------------------------------------------------------------
-			// Stored procedure for checking before inserting in a batch.											
-			// http://stackoverflow.com/questions/1109061/insert-on-duplicate-update-postgresql			
-			//--------------------------------------------------------------------------------------
-			query = "CREATE OR REPLACE FUNCTION upsert_owner_rec(c_id varchar(255), s_c_id varchar(255), a_id varchar(255), f_id varchar(255), c_start INT, c_end INT, c_type varchar(12)) RETURNS VOID AS" +
-						"'" +
-						" DECLARE " + 
-							"dummy integer;" + 
-						" BEGIN " +
-							" LOOP " +
-								" select owners.char_start into dummy from owners where commit_id=c_id and source_commit_id=s_c_id and owner_id=a_id and file_id=f_id and char_start=c_start and char_end=c_end and change_type=c_type;" +
-								" IF found THEN " +
-									" RETURN ;" +
-								" END IF;" +
-								" BEGIN " +
-									" INSERT INTO owners VALUES (c_id, s_c_id, a_id, f_id, c_start, c_end, c_type);" +
-									" RETURN; " +
-								" EXCEPTION WHEN unique_violation THEN " +
-								" END; " +
-							" END LOOP;" +
-						" END; " +
-						"'" +
-					" LANGUAGE plpgsql;";
-			ei = new PreparedStatementExecutionItem(query, null);
-			addExecutionItem(ei);
-			ei.waitUntilExecuted();
-			
-			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
 	public void insertCommitFamilyEntry(String commit, String parentCommit)
 	{
 		String query = "INSERT INTO commit_family (parent, child) VALUES(?, ?);";

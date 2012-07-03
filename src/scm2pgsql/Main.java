@@ -6,6 +6,8 @@ import java.io.IOException;
 
 import org.eclipse.jgit.errors.MissingObjectException;
 
+import db.GitResources;
+
 public class Main {
 	public static GitParser gitParser = new GitParser();
 	public static void main(String[] args)	

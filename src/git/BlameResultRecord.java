@@ -1,6 +1,6 @@
 package git;
 
-import scm2pgsql.GitResources;
+import db.GitResources;
 
 public class BlameResultRecord
 {

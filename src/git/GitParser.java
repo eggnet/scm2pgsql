@@ -40,12 +40,12 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 import org.eclipse.jgit.util.io.NullOutputStream;
 
-import scm2pgsql.GitResources;
 import db.BranchEntryTO;
 import db.CommitsTO;
 import db.FileDiffsTO;
 import db.FilesTO;
 import db.GitDb;
+import db.GitResources;
 import db.Resources;
 import db.FileDiffsTO.diff_types;
 import differ.diffObjectResult;
