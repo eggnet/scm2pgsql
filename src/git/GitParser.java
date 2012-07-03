@@ -45,7 +45,7 @@ import db.CommitsTO;
 import db.FileDiffsTO;
 import db.FilesTO;
 import db.GitDb;
-import db.GitResources;
+import db.TechnicalResources;
 import db.Resources;
 import db.FileDiffsTO.diff_types;
 import differ.diffObjectResult;
@@ -165,7 +165,7 @@ public class GitParser {
 			TreeWalk initialCommit = new TreeWalk(repoFile);
 			initialCommit.addTree(commit.getTree());
 			initialCommit.setRecursive(true);
-			if (GitResources.JAVA_ONLY)
+			if (TechnicalResources.JAVA_ONLY)
 				initialCommit.setFilter(PathSuffixFilter.create(".java"));
 	
 			// For each file, insert raw file to file_caches.
@@ -212,7 +212,7 @@ public class GitParser {
 		initialCommit.addTree(commit.getTree());
 		initialCommit.setRecursive(true);
 		
-		if (GitResources.JAVA_ONLY)
+		if (TechnicalResources.JAVA_ONLY)
 			initialCommit.setFilter(PathSuffixFilter.create(".java"));
 
 		CommitsTO currentCommit = new CommitsTO();
@@ -344,7 +344,7 @@ public class GitParser {
 			String oldPathName = d.getOldPath();
 			
 			// skip non-java file
-			if (GitResources.JAVA_ONLY)
+			if (TechnicalResources.JAVA_ONLY)
 			{ 
 				if(!(newPathName.endsWith(".java") || oldPathName.endsWith(".java")))
 					continue;
@@ -468,7 +468,7 @@ public class GitParser {
 			rec.setFileId		 (currentFile.getFile_id());
 			rec.setLineEnd  (-1);
 			rec.setLineStart(-1);
-			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
+			rec.setType(TechnicalResources.ChangeType.valueOf(change.toString()));
 			db.insertOwnerRecord(rec);
 			return;
 		}
@@ -500,7 +500,7 @@ public class GitParser {
 			{
 				// finish off the last record
 				rec.setLineEnd(i);
-				rec.setType(GitResources.ChangeType.valueOf(change.toString()));
+				rec.setType(TechnicalResources.ChangeType.valueOf(change.toString()));
 				
 				// Convert from line -> char
 				rec.setLineStart(Resources.convertLineStartToCharStart(rec.getLineStart(), currentFile.getRaw_file()));
@@ -525,7 +525,7 @@ public class GitParser {
 		// Insert the last record
 		if (rec != null)
 		{
-			rec.setType(GitResources.ChangeType.valueOf(change.toString()));
+			rec.setType(TechnicalResources.ChangeType.valueOf(change.toString()));
 			
 			// Convert from line -> char
 			rec.setLineStart(Resources.convertLineStartToCharStart(rec.getLineStart(), currentFile.getRaw_file()));

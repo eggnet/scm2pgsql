@@ -1,6 +1,6 @@
 package git;
 
-import db.GitResources;
+import db.TechnicalResources;
 
 public class BlameResultRecord
 {
@@ -8,7 +8,7 @@ public class BlameResultRecord
 	private String sourceCommitId;
 	private String AuthorId;
 	private String FileId;
-	private GitResources.ChangeType Type;
+	private TechnicalResources.ChangeType Type;
 	private int charStart;
 	private int charEnd;
 	public BlameResultRecord() {}
@@ -37,11 +37,11 @@ public class BlameResultRecord
 	{
 		FileId = fileId;
 	}
-	public GitResources.ChangeType getType()
+	public TechnicalResources.ChangeType getType()
 	{
 		return Type;
 	}
-	public void setType(GitResources.ChangeType type)
+	public void setType(TechnicalResources.ChangeType type)
 	{
 		Type = type;
 	}

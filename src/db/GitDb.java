@@ -1,13 +1,9 @@
 package db;
 
 import git.BlameResultRecord;
-
-import java.io.InputStreamReader;
-
-
 import db.util.ISetter;
-import db.util.ISetter.StringSetter;
 import db.util.ISetter.IntSetter;
+import db.util.ISetter.StringSetter;
 import db.util.PreparedCallExecutionItem;
 import db.util.PreparedStatementExecutionItem;
 

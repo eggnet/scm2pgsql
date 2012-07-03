@@ -6,7 +6,7 @@ import java.io.IOException;
 
 import org.eclipse.jgit.errors.MissingObjectException;
 
-import db.GitResources;
+import db.TechnicalResources;
 
 public class Main {
 	public static GitParser gitParser = new GitParser();
@@ -22,7 +22,7 @@ public class Main {
 			{
 				try 
 				{
-					if (args.length > 1) GitResources.SET_ENC = Boolean.parseBoolean(args[1]);
+					if (args.length > 1) TechnicalResources.SET_ENC = Boolean.parseBoolean(args[1]);
 					gitParser.parseRepo(args[0]);
 				} 
 				catch (MissingObjectException e) 
