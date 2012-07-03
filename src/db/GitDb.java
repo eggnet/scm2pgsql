@@ -18,10 +18,6 @@ public class GitDb extends DbConnection
 		super();
 	}
 	
-	public boolean execCallableBatch() {
-		return true;
-	}
-	
 	public boolean InsertFileDiff(FileDiffsTO diff)
 	{
 		String query = "INSERT INTO file_diffs (file_id, new_commit_id, old_commit_id, diff_text, char_start, char_end, diff_type)" +
@@ -156,7 +152,7 @@ public class GitDb extends DbConnection
 							new StringSetter(2, files.getFile_id()),
 							new StringSetter(3, files.getRaw_file())};
 		
-		PreparedCallExecutionItem ei = new PreparedCallExecutionItem(query, params);
+		PreparedStatementExecutionItem ei = new PreparedStatementExecutionItem(query, params);
 		addExecutionItem(ei);
 	  }
 }

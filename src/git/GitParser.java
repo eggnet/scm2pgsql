@@ -182,7 +182,6 @@ public class GitParser {
 				// insert to file_caches
 				db.InsertFiles(currentFile);
 			}
-			db.execBatch();
 		}
 		catch (Exception e)
 		{
@@ -241,7 +240,6 @@ public class GitParser {
 			// update Ownership
 			updateOwnership(currentCommit, currentFile, ChangeType.ADD);
 		}
-		db.execBatch();
 		
 		// Insert relationships and files for its children
 		parseCommit(commit, branch);
@@ -320,7 +318,6 @@ public class GitParser {
 			childCommitTO.setCommit_date (new Date(childCommit.getCommitTime() * 1000L));
 			childCommitTO.setBranch_id	 (branch.getObjectId().getName());
 			parseDiffs(childCommitTO, currentCommitTO, diffs);
-			db.execBatch();
 		}
 		
 	}
@@ -535,6 +532,5 @@ public class GitParser {
 			rec.setLineEnd  (Resources.convertLineEndToCharEnd    (rec.getLineEnd()  , currentFile.getRaw_file()));
 			db.insertOwnerRecord(rec);
 		}
-		db.execCallableBatch();
 	}
 }
