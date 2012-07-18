@@ -483,9 +483,8 @@ public class GitParser {
 		for(int i = 0;i < blameRes.getResultContents().size();i++)
 		{
 			PersonIdent sourceAuthor = blameRes.getSourceAuthor(i);
-			String sourceCommitId = blameRes.getSourceCommit(i).getName();
 			
-			if (sourceCommitId == "" || sourceAuthor == null)
+			if (blameRes.getSourceCommit(i) == null || sourceAuthor == null)
 			{
 				continue;	// safety
 			}
@@ -498,7 +497,7 @@ public class GitParser {
 				rec.setCommitId		 (currentCommit.getCommit_id());
 				rec.setLineStart(i+1);
 			}
-			else if (!rec.getSourceCommitId().equals(sourceCommitId))
+			else if (!rec.getSourceCommitId().equals(blameRes.getSourceCommit(i).getName()))
 			{
 				// finish off the last record
 				rec.setLineEnd(i);
@@ -517,7 +516,7 @@ public class GitParser {
 				rec.setCommitId		 (currentCommit.getCommit_id());
 				rec.setLineStart(i+1);
 			}
-			else if (rec.getSourceCommitId().equals(sourceCommitId))
+			else if (rec.getSourceCommitId().equals(blameRes.getSourceCommit(i).getName()))
 			{
 				// we have the same owner
 				rec.setLineEnd(i+1); 				
